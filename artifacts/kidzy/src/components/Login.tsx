@@ -70,7 +70,7 @@ export const Login: React.FC = () => {
     // First: always try matching against the users table (staff added by owner)
     // This works both with and without Supabase configured
     const localMatch = users.find(
-      u => u.email.toLowerCase() === email.toLowerCase().trim() && verifyPassword(password, u.password || "")
+      u => u?.email?.toLowerCase() === email?.toLowerCase().trim() && verifyPassword(password, u.password || "")
     );
     if (localMatch) {
       if (rememberMe) { saveCredentials(email.trim(), password); } else { clearCredentials(); }
@@ -188,7 +188,7 @@ export const Login: React.FC = () => {
           };
 
           const updatedUsers = [...users];
-          if (!updatedUsers.some(u => u.email.toLowerCase() === regEmail.toLowerCase())) {
+          if (!updatedUsers.some(u => u?.email?.toLowerCase() === regEmail?.toLowerCase())) {
             updatedUsers.push(newOwner);
           }
           setUsers(updatedUsers);
@@ -206,7 +206,7 @@ export const Login: React.FC = () => {
     // Pure Local Storage Fallback
     setTimeout(() => {
       // Check if email already exists
-      const exists = users.some(u => u.email.toLowerCase() === regEmail.toLowerCase());
+      const exists = users.some(u => u?.email?.toLowerCase() === regEmail?.toLowerCase());
       if (exists) {
         setError("عفواً، هذا البريد الإلكتروني مسجل سابقاً في النظام.");
         setLoading(false);
