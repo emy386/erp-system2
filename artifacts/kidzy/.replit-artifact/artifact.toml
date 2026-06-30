@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Kidzy Dashboard"
+version = "1.0.0"
+id = "artifacts/kidzy"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22278
+
+[services.development]
+run = "pnpm --filter @workspace/kidzy run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kidzy", "run", "build" ]
+publicDir = "artifacts/kidzy/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22278"
+BASE_PATH = "/"
