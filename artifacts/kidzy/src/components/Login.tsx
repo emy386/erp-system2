@@ -83,10 +83,16 @@ export const Login: React.FC = () => {
     if (supabaseReady && supabase) {
       try {
         console.log("🔐 Logging in via Supabase Auth...");
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
+
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("انتهت مهلة الاتصال بقاعدة البيانات، تحقق من اتصالك")), 15000)
+        );
+        const authPromise = supabase.auth.signInWithPassword({
           email: email.trim(),
           password: password,
         });
+        const { data, error: authError } = await Promise.race([authPromise, timeoutPromise]) as Awaited<typeof authPromise>;
 
         if (authError) {
           throw authError;
