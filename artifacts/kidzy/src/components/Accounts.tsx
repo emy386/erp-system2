@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Wallet, Plus, Trash2, Receipt, 
@@ -47,44 +47,44 @@ export function Accounts() {
   // New Expense Form State
   const [newExpense, setNewExpense] = useState<Partial<GeneralExpense>>({
     date: new Date().toISOString(),
-    category: '╪ú╪«╪▒┘ë',
+    category: 'أخرى',
     description: '',
     amount: 0,
     paidAmount: undefined,
     notes: ''
   });
 
-  const [categories, setCategories] = useState(['╪«╪º┘à╪º╪¬', '╪¬╪│┘ê┘è┘é', '╪¬╪║┘ä┘è┘ü', '╪ú╪«╪▒┘ë']);
+  const [categories, setCategories] = useState(['خامات', 'تسويق', 'تغليف', 'أخرى']);
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
   const autoCategory = (desc: string) => {
     const map: Record<string, string> = {
-      '╪«╪º┘à': '╪«╪º┘à╪º╪¬',
-      '┘é┘à╪º╪┤': '╪«╪º┘à╪º╪¬',
-      '╪«┘è╪╖': '╪«╪º┘à╪º╪¬',
-      '╪║┘ä╪º┘ü': '╪¬╪║┘ä┘è┘ü',
-      '╪┤┘å╪╖': '╪¬╪║┘ä┘è┘ü',
-      '┘â╪▒╪¬┘ê┘å': '╪¬╪║┘ä┘è┘ü',
-      '╪¬╪║┘ä┘è┘ü': '╪¬╪║┘ä┘è┘ü',
-      '┘ü┘è╪│╪¿┘ê┘â': '╪¬╪│┘ê┘è┘é',
-      '╪Ñ╪╣┘ä╪º┘å': '╪¬╪│┘ê┘è┘é',
-      '╪│┘ê╪┤┘è╪º┘ä': '╪¬╪│┘ê┘è┘é',
-      '╪¬╪│┘ê┘è┘é': '╪¬╪│┘ê┘è┘é'
+      'خام': 'خامات',
+      'قماش': 'خامات',
+      'خيط': 'خامات',
+      'غلاف': 'تغليف',
+      'شنط': 'تغليف',
+      'كرتون': 'تغليف',
+      'تغليف': 'تغليف',
+      'فيسبوك': 'تسويق',
+      'إعلان': 'تسويق',
+      'سوشيال': 'تسويق',
+      'تسويق': 'تسويق'
     };
 
     for (const [key, cat] of Object.entries(map)) {
       if (desc.includes(key)) return cat;
     }
-    return '╪ú╪«╪▒┘ë';
+    return 'أخرى';
   };
 
   // Categories Color Map
   const categoryColors: Record<string, string> = {
-    '╪«╪º┘à╪º╪¬': 'bg-amber-100 text-amber-600',
-    '╪¬╪│┘ê┘è┘é': 'bg-pink-100 text-pink-600',
-    '╪¬╪║┘ä┘è┘ü': 'bg-indigo-100 text-indigo-600',
-    '╪ú╪«╪▒┘ë': 'bg-gray-100 text-gray-650'
+    'خامات': 'bg-amber-100 text-amber-600',
+    'تسويق': 'bg-pink-100 text-pink-600',
+    'تغليف': 'bg-indigo-100 text-indigo-600',
+    'أخرى': 'bg-gray-100 text-gray-650'
   };
 
   // Financial Summary Calculation
@@ -289,7 +289,7 @@ export function Accounts() {
     const expense: GeneralExpense = {
       id: `EXP-${Date.now()}`,
       date: newExpense.date || new Date().toISOString(),
-      category: newExpense.category || '╪ú╪«╪▒┘ë',
+      category: newExpense.category || 'أخرى',
       description: newExpense.description || '',
       amount: newExpense.amount || 0,
       paidAmount: newExpense.paidAmount !== undefined ? newExpense.paidAmount : newExpense.amount,
@@ -299,7 +299,7 @@ export function Accounts() {
     setGeneralExpenses([expense, ...generalExpenses]);
     setNewExpense({ 
       date: new Date().toISOString(), 
-      category: '╪ú╪«╪▒┘ë', 
+      category: 'أخرى', 
       description: '', 
       amount: 0,
       paidAmount: undefined,
@@ -324,7 +324,7 @@ export function Accounts() {
     setEditingId(null);
     setNewExpense({ 
       date: new Date().toISOString(), 
-      category: '╪ú╪«╪▒┘ë', 
+      category: 'أخرى', 
       description: '', 
       amount: 0,
       paidAmount: undefined,
@@ -339,10 +339,10 @@ export function Accounts() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2 justify-start">
-             ╪º┘ä╪«╪▓┘è┘å╪⌐ ┘ê╪º┘ä╪¡╪│╪º╪¿╪º╪¬
+             الخزينة والحسابات
             <Wallet className="text-blue-500" />
           </h2>
-          <p className="text-slate-400 font-bold text-sm mt-1">╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘à╪»╪º╪«┘è┘ä ┘ê╪º┘ä┘à╪╡╪º╪▒┘è┘ü ┘ê╪┤╪║┘ä ╪º┘ä┘ê╪▒╪┤╪⌐</p>
+          <p className="text-slate-400 font-bold text-sm mt-1">إجمالي المداخيل والمصاريف وشغل الورشة</p>
         </div>
       </div>
 
@@ -351,14 +351,14 @@ export function Accounts() {
         <div className="flex flex-col lg:flex-row gap-4 items-center">
           {/* Account/Section Filter Selector */}
           <div className="relative w-full lg:w-72">
-            <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">┘é╪│┘à ╪º┘ä╪¡╪│╪º╪¿╪º╪¬</span>
+            <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">قسم الحسابات</span>
             <select
               value={activeTab}
               onChange={(e) => setActiveTab(e.target.value as 'expenses' | 'workshop')}
               className="bg-slate-50 border border-slate-100 rounded-2xl py-3 pr-4 pl-10 text-xs font-black text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors w-full"
             >
-              <option value="expenses">≡ƒÆ╕ ╪º┘ä┘à╪╡╪º╪▒┘è┘ü ╪º┘ä╪╣╪º┘à╪⌐ ┘ê╪º┘ä╪«╪▓┘è┘å╪⌐</option>
-              <option value="workshop">≡ƒº╡ ╪¡╪│╪º╪¿ ╪¬┘â┘ä┘ü╪⌐ ╪º┘ä╪¬╪╡┘å┘è╪╣ ┘ä┘ä╪╖┘ä╪¿╪º╪¬</option>
+              <option value="expenses">💸 المصاريف العامة والخزينة</option>
+              <option value="workshop">🧵 حساب تكلفة التصنيع للطلبات</option>
             </select>
           </div>
 
@@ -369,7 +369,7 @@ export function Accounts() {
                 <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
-                  placeholder="╪º╪¿╪¡╪½ ╪¿┘ê╪╡┘ü ╪º┘ä┘à╪╡╪▒┘ê┘ü ╪ú┘ê ╪¿╪º┘ä╪¬╪╡┘å┘è┘ü..."
+                  placeholder="ابحث بوصف المصروف أو بالتصنيف..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-2xl py-3 pr-11 pl-4 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all text-right outline-none"
@@ -378,13 +378,13 @@ export function Accounts() {
 
               {/* Category selector filter */}
               <div className="relative w-full lg:w-48">
-                <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">╪º┘ä╪¬╪╡┘å┘è┘ü</span>
+                <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">التصنيف</span>
                 <select 
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
                   className="bg-slate-50 border border-slate-100 rounded-2xl py-3.5 pr-4 pl-10 text-xs font-black text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition-colors w-full"
                 >
-                  <option value="all">┘â┘ä ╪º┘ä╪¬╪╡┘å┘è┘ü╪º╪¬</option>
+                  <option value="all">كل التصنيفات</option>
                   {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
@@ -395,7 +395,7 @@ export function Accounts() {
                 className="bg-slate-900 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-black transition-all shadow-xl shadow-slate-100 hover:scale-[1.02] w-full lg:w-auto"
               >
                 {isAdding ? <X size={20} /> : <Plus size={20} />}
-                <span>{isAdding ? '╪Ñ┘ä╪║╪º╪í ╪º┘ä╪Ñ╪╢╪º┘ü╪⌐' : '╪Ñ╪╢╪º┘ü╪⌐ ┘à╪╡╪▒┘ê┘ü ╪¼╪»┘è╪»'}</span>
+                <span>{isAdding ? 'إلغاء الإضافة' : 'إضافة مصروف جديد'}</span>
               </button>
             </>
           ) : (
@@ -405,7 +405,7 @@ export function Accounts() {
                 <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
-                  placeholder="╪º╪¿╪¡╪½ ╪¿╪▒┘é┘à ╪º┘ä╪ú┘ê╪▒╪»╪▒ ╪ú┘ê ╪º╪│┘à ╪º┘ä╪╣┘à┘è┘ä..."
+                  placeholder="ابحث برقم الأوردر أو اسم العميل..."
                   value={workshopSearchQuery}
                   onChange={(e) => setWorkshopSearchQuery(e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-2xl py-3 pr-11 pl-4 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all text-right outline-none"
@@ -414,13 +414,13 @@ export function Accounts() {
 
               {/* Month Selector Filter */}
               <div className="relative w-full lg:w-48">
-                <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">╪¬╪╡┘ü┘è╪⌐ ╪¿╪º┘ä╪┤┘ç╪▒</span>
+                <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">تصفية بالشهر</span>
                 <select
                   value={selectedWorkshopMonth}
                   onChange={(e) => setSelectedWorkshopMonth(e.target.value)}
                   className="bg-slate-50 border border-slate-100 rounded-2xl py-3.5 pr-4 pl-10 text-xs font-black text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition-colors w-full"
                 >
-                  <option value="all">┘â┘ä ╪º┘ä╪ú╪┤┘ç╪▒ (┘â┘ä ╪º┘ä┘ê┘é╪¬)</option>
+                  <option value="all">كل الأشهر (كل الوقت)</option>
                   {availableMonths.map(mStr => {
                     const [y, m] = mStr.split('-');
                     const date = new Date(parseInt(y), parseInt(m) - 1, 1);
@@ -432,17 +432,17 @@ export function Accounts() {
 
               {/* Order Status Selector Filter */}
               <div className="relative w-full lg:w-48">
-                <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">╪¡╪º┘ä╪⌐ ╪º┘ä╪ú┘ê╪▒╪»╪▒</span>
+                <span className="absolute right-3 top-[-8px] bg-white px-1 text-[9px] font-black text-slate-400">حالة الأوردر</span>
                 <select
                   value={workshopStatusFilter}
                   onChange={(e) => setWorkshopStatusFilter(e.target.value)}
                   className="bg-slate-50 border border-slate-100 rounded-2xl py-3.5 pr-4 pl-10 text-xs font-black text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition-colors w-full"
                 >
-                  <option value="all-active">┘â┘ä ╪º┘ä┘å╪┤╪╖╪⌐ (╪╣╪»╪º ╪º┘ä┘à┘ä╪║┘è)</option>
-                  <option value="delivered">╪º┘ä╪╖┘ä╪¿╪º╪¬ ╪º┘ä┘à╪│┘ä┘æ┘à╪⌐ ┘ü┘é╪╖ Γ£à</option>
-                  <option value="shipped">╪┤╪¡┘å ┘ê╪¬┘ê╪╡┘è┘ä ≡ƒÜÜ</option>
-                  <option value="manufactured">╪¬┘à ╪º┘ä╪¬╪╡┘å┘è╪╣ ≡ƒº╡</option>
-                  <option value="all">┘â┘ä ╪º┘ä╪¡╪º┘ä╪º╪¬ (╪¿┘à╪º ┘ü┘è┘ç╪º ╪º┘ä┘à┘ä╪║┘è)</option>
+                  <option value="all-active">كل النشطة (عدا الملغي)</option>
+                  <option value="delivered">الطلبات المسلّمة فقط ✅</option>
+                  <option value="shipped">شحن وتوصيل 🚚</option>
+                  <option value="manufactured">تم التصنيع 🧵</option>
+                  <option value="all">كل الحالات (بما فيها الملغي)</option>
                 </select>
               </div>
             </>
@@ -456,14 +456,14 @@ export function Accounts() {
         <div className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-100/50 shadow-sm relative overflow-hidden group">
           <ArrowUpCircle size={80} className="absolute -top-4 -left-4 text-emerald-500 opacity-10 -rotate-12 group-hover:rotate-0 transition-transform" />
           <div className="relative">
-            <p className="text-[10px] font-black text-emerald-600 mb-1 uppercase tracking-wider">┘ü┘ä┘ê╪│ ╪»╪º╪«┘ä╪⌐ (┘à╪¿┘è╪╣╪º╪¬ ╪º┘ä╪┤┘ç╪▒)</p>
+            <p className="text-[10px] font-black text-emerald-600 mb-1 uppercase tracking-wider">فلوس داخلة (مبيعات الشهر)</p>
             <div className="flex items-baseline gap-1 justify-end">
               <span className="text-3xl font-black text-slate-800">{stats.totalIn.toLocaleString()}</span>
-              <span className="text-sm font-bold text-slate-400">╪¼.┘à</span>
+              <span className="text-sm font-bold text-slate-400">ج.م</span>
             </div>
             <div className="mt-3 flex items-center gap-1 justify-end text-[10px] font-bold text-emerald-600">
               <TrendingDown className="rotate-180" size={12} />
-              <span>┘à╪¿┘å┘è ╪╣┘ä┘ë ╪ú┘ê╪▒╪»╪▒╪º╪¬ ┘ç╪░╪º ╪º┘ä╪┤┘ç╪▒</span>
+              <span>مبني على أوردرات هذا الشهر</span>
             </div>
           </div>
         </div>
@@ -472,24 +472,24 @@ export function Accounts() {
         <div className="bg-red-50 p-6 rounded-[2.5rem] border border-red-100/50 shadow-sm relative overflow-hidden group/out">
           <ArrowDownCircle size={80} className="absolute -top-4 -left-4 text-red-500 opacity-10 -rotate-12 group-hover/out:rotate-0 transition-transform" />
           <div className="relative">
-            <p className="text-[10px] font-black text-red-600 mb-1 uppercase tracking-wider">┘ü┘ä┘ê╪│ ╪«╪º╪▒╪¼╪⌐ (┘à╪╡╪º╪▒┘è┘ü ╪º┘ä╪┤┘ç╪▒)</p>
+            <p className="text-[10px] font-black text-red-600 mb-1 uppercase tracking-wider">فلوس خارجة (مصاريف الشهر)</p>
             <div className="flex items-baseline gap-1 justify-end font-sans">
               <span className="text-3xl font-black text-slate-800">{stats.totalOut.toLocaleString()}</span>
-              <span className="text-sm font-bold text-slate-400">╪¼.┘à</span>
+              <span className="text-sm font-bold text-slate-400">ج.م</span>
             </div>
             
             <div className="mt-2 text-[10px] text-slate-500 font-bold bg-slate-100 p-2.5 rounded-2xl border border-slate-200/20 space-y-1">
               <div className="flex justify-between">
-                <span>{stats.monthMfgCost.toLocaleString()} ╪¼.┘à</span>
-                <span>≡ƒº╡ ╪¬┘â╪º┘ä┘è┘ü ╪¬╪╡┘å┘è╪╣:</span>
+                <span>{stats.monthMfgCost.toLocaleString()} ج.م</span>
+                <span>🧵 تكاليف تصنيع:</span>
               </div>
               <div className="flex justify-between">
-                <span>{stats.monthGeneral.toLocaleString()} ╪¼.┘à</span>
-                <span>≡ƒÆ╕ ┘à╪╡╪º╪▒┘è┘ü ╪╣╪º┘à╪⌐:</span>
+                <span>{stats.monthGeneral.toLocaleString()} ج.م</span>
+                <span>💸 مصاريف عامة:</span>
               </div>
               <div className="flex justify-between">
-                <span>{(stats.monthWorkerPayments + stats.monthStaffExtra + stats.monthStaffFixed).toLocaleString()} ╪¼.┘à</span>
-                <span>≡ƒæñ ╪▒┘ê╪º╪¬╪¿ ┘ê╪╣┘à╪º┘ä╪⌐:</span>
+                <span>{(stats.monthWorkerPayments + stats.monthStaffExtra + stats.monthStaffFixed).toLocaleString()} ج.م</span>
+                <span>👤 رواتب وعمالة:</span>
               </div>
             </div>
           </div>
@@ -499,14 +499,14 @@ export function Accounts() {
         <div className="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-100/50 shadow-sm relative overflow-hidden group text-right">
           <TrendingDown size={80} className="absolute -top-4 -left-4 text-amber-500 opacity-10 -rotate-12 group-hover:rotate-0 transition-transform" />
           <div className="relative">
-            <p className="text-[10px] font-black text-amber-600 mb-1 uppercase tracking-wider">╪º┘ä╪»┘è┘ê┘å ╪º┘ä┘à╪¬╪¿┘é┘è╪⌐ ┘ä┘ä╪¿╪▒╪º┘å╪»</p>
+            <p className="text-[10px] font-black text-amber-600 mb-1 uppercase tracking-wider">الديون المتبقية للبراند</p>
             <div className="flex items-baseline gap-1 justify-end font-sans">
               <span className="text-3xl font-black text-slate-800">{stats.totalRemainingDebts.toLocaleString()}</span>
-              <span className="text-sm font-bold text-slate-400">╪¼.┘à</span>
+              <span className="text-sm font-bold text-slate-400">ج.م</span>
             </div>
             <div className="mt-3 flex items-center gap-1 justify-end text-[10px] font-bold text-amber-600">
               <AlertTriangle size={12} />
-              <span>┘à╪¬╪¿┘é┘è ╪»┘ü╪╣┘ç╪º ┘ä┘ä┘à┘ê╪▒╪»┘è┘å / ╪º┘ä╪«╪»┘à╪º╪¬</span>
+              <span>متبقي دفعها للموردين / الخدمات</span>
             </div>
           </div>
         </div>
@@ -515,12 +515,12 @@ export function Accounts() {
         <div className={`p-6 rounded-[2.5rem] shadow-xl relative overflow-hidden group border transition-all ${stats.netProfit >= 0 ? 'bg-slate-900 border-slate-800 text-white' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
           <DollarSign size={80} className={`absolute -top-4 -left-4 -rotate-12 group-hover:rotate-0 transition-transform ${stats.netProfit >= 0 ? 'text-white opacity-10' : 'text-orange-500 opacity-10'}`} />
           <div className="relative text-right">
-            <p className={`text-[10px] font-black mb-1 uppercase tracking-wider opacity-60`}>╪╡╪º┘ü┘è ╪º┘ä╪▒╪¿╪¡ / ╪º┘ä╪«╪│╪º╪▒╪⌐</p>
+            <p className={`text-[10px] font-black mb-1 uppercase tracking-wider opacity-60`}>صافي الربح / الخسارة</p>
             <div className="flex items-baseline gap-1 justify-end font-sans">
               <span className="text-4xl font-black">{stats.netProfit.toLocaleString()}</span>
-              <span className="text-sm font-bold opacity-50">╪¼.┘à</span>
+              <span className="text-sm font-bold opacity-50">ج.م</span>
             </div>
-            <p className="mt-3 text-[10px] font-bold opacity-60">╪º┘ä┘ü╪▒┘é ╪¿┘è┘å ╪º┘ä┘à╪¿┘è╪╣╪º╪¬ ┘ê╪º┘ä┘à╪╡╪º╪▒┘è┘ü ╪º┘ä┘â┘ä┘è╪⌐</p>
+            <p className="mt-3 text-[10px] font-bold opacity-60">الفرق بين المبيعات والمصاريف الكلية</p>
           </div>
         </div>
       </div>
@@ -533,22 +533,22 @@ export function Accounts() {
               <form onSubmit={handleAddExpense} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div className="space-y-1 lg:col-span-1">
-                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">┘ê╪╡┘ü ╪º┘ä┘à╪╡╪▒┘ê┘ü (╪º┘ä╪º╪│┘à)</label>
+                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">وصف المصروف (الاسم)</label>
                     <input 
                       type="text" 
-                      placeholder="┘à╪½┘ä╪º┘ï: ╪«╪º┘à╪º╪¬ ╪¬╪╡┘å┘è╪╣╪î ┘ü╪º╪¬┘ê╪▒╪⌐.."
+                      placeholder="مثلاً: خامات تصنيع، فاتورة.."
                       required
                       className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-right outline-none ring-1 ring-slate-100 focus:ring-blue-200 transition-all"
                       value={newExpense.description || ''} 
                       onChange={e => {
                         const desc = e.target.value;
                         const cat = autoCategory(desc);
-                        setNewExpense({...newExpense, description: desc, category: cat !== '╪ú╪«╪▒┘ë' ? cat : newExpense.category });
+                        setNewExpense({...newExpense, description: desc, category: cat !== 'أخرى' ? cat : newExpense.category });
                       }} 
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">╪º┘ä┘à╪¿┘ä╪║ ╪º┘ä┘â┘ä┘è</label>
+                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">المبلغ الكلي</label>
                     <input 
                       type="number" 
                       placeholder="0.00"
@@ -563,10 +563,10 @@ export function Accounts() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">╪º┘ä┘à╪»┘ü┘ê╪╣ ┘ü╪╣┘ä╪º┘ï</label>
+                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">المدفوع فعلاً</label>
                     <input 
                       type="number" 
-                      placeholder="╪º╪¬╪▒┘â┘ç ┘ä┘ä╪»┘ü╪╣ ╪¿╪º┘ä┘â╪º┘à┘ä"
+                      placeholder="اتركه للدفع بالكامل"
                       className="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black font-sans text-right outline-none ring-1 ring-slate-100 focus:ring-blue-200 transition-all"
                       value={newExpense.paidAmount === undefined ? '' : newExpense.paidAmount} 
                       onFocus={e => e.target.select()}
@@ -580,9 +580,9 @@ export function Accounts() {
                         onClick={() => setShowNewCategoryInput(!showNewCategoryInput)}
                         className="text-blue-500 hover:underline"
                       >
-                        {showNewCategoryInput ? '╪Ñ┘ä╪║╪º╪í' : '+ ╪¬╪╡┘å┘è┘ü ╪¼╪»┘è╪»'}
+                        {showNewCategoryInput ? 'إلغاء' : '+ تصنيف جديد'}
                       </button>
-                      <span>╪º┘ä╪¬╪╡┘å┘è┘ü</span>
+                      <span>التصنيف</span>
                     </label>
                     {showNewCategoryInput ? (
                       <div className="flex gap-2">
@@ -603,7 +603,7 @@ export function Accounts() {
                         <input 
                           type="text"
                           className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-right outline-none ring-1 ring-slate-100 focus:ring-blue-200"
-                          placeholder="╪º╪│┘à ╪º┘ä╪¬╪╡┘å┘è┘ü..."
+                          placeholder="اسم التصنيف..."
                           value={newCategoryName}
                           onChange={e => setNewCategoryName(e.target.value)}
                         />
@@ -619,10 +619,10 @@ export function Accounts() {
                     )}
                   </div>
                   <div className="space-y-1 lg:col-span-1">
-                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">┘à┘ä╪º╪¡╪╕╪º╪¬ (Notes)</label>
+                    <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">ملاحظات (Notes)</label>
                     <input 
                       type="text" 
-                      placeholder="╪ú┘è ┘à┘ä╪º╪¡╪╕╪º╪¬ ╪Ñ╪╢╪º┘ü┘è╪⌐..."
+                      placeholder="أي ملاحظات إضافية..."
                       className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-right outline-none ring-1 ring-slate-100 focus:ring-blue-200 transition-all"
                       value={newExpense.notes} 
                       onChange={e => setNewExpense({...newExpense, notes: e.target.value})} 
@@ -635,7 +635,7 @@ export function Accounts() {
                     className="bg-blue-600 text-white font-black h-[52px] px-12 rounded-2xl shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
                     <Save size={20} />
-                    ╪¡┘ü╪╕ ╪º┘ä┘à╪╡╪▒┘ê┘ü ╪º┘ä┘å┘ç╪º╪ª┘è
+                    حفظ المصروف النهائي
                   </button>
                 </div>
               </form>
@@ -645,9 +645,9 @@ export function Accounts() {
           {/* Recent Ledger / Table */}
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-              <h3 className="font-black text-lg text-slate-800">╪│╪¼┘ä ╪╣┘à┘ä┘è╪º╪¬ ╪º┘ä╪╡╪▒┘ü</h3>
+              <h3 className="font-black text-lg text-slate-800">سجل عمليات الصرف</h3>
               <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-100">
-                 <span className="text-[11px] font-black text-slate-400">╪╣╪»╪» ╪º┘ä╪╣┘à┘ä┘è╪º╪¬:</span>
+                 <span className="text-[11px] font-black text-slate-400">عدد العمليات:</span>
                  <span className="text-xs font-black text-blue-600">{stats.filteredExpenses.length}</span>
               </div>
             </div>
@@ -655,21 +655,21 @@ export function Accounts() {
               <table className="w-full text-right">
                 <thead>
                   <tr className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                    <th className="px-6 py-5">╪¬╪º╪▒┘è╪«</th>
-                    <th className="px-6 py-5">┘à╪│┘à┘è ╪º┘ä╪¬┘â┘ä┘ü╪⌐ (╪º┘ä╪º╪│┘à)</th>
-                    <th className="px-6 py-5">╪º┘ä╪¬╪╡┘å┘è┘ü</th>
-                    <th className="px-6 py-5 font-extrabold text-slate-700">╪º┘ä┘à╪¿┘ä╪║ ╪º┘ä┘â┘ä┘è</th>
-                    <th className="px-6 py-5 font-extrabold text-emerald-600">╪º┘ä┘à╪»┘ü┘ê╪╣ ┘ü╪╣┘ä╪º┘ï</th>
-                    <th className="px-6 py-5 font-extrabold text-red-500">╪º┘ä╪»┘è┘ê┘å ╪º┘ä┘à╪¬╪¿┘é┘è╪⌐</th>
-                    <th className="px-6 py-5">┘å┘ê╪¬ ┘ê╪¬┘ü╪º╪╡┘è┘ä (Notes)</th>
-                    <th className="px-6 py-5">╪Ñ╪¼╪▒╪º╪í╪º╪¬</th>
+                    <th className="px-6 py-5">تاريخ</th>
+                    <th className="px-6 py-5">مسمي التكلفة (الاسم)</th>
+                    <th className="px-6 py-5">التصنيف</th>
+                    <th className="px-6 py-5 font-extrabold text-slate-700">المبلغ الكلي</th>
+                    <th className="px-6 py-5 font-extrabold text-emerald-600">المدفوع فعلاً</th>
+                    <th className="px-6 py-5 font-extrabold text-red-500">الديون المتبقية</th>
+                    <th className="px-6 py-5">نوت وتفاصيل (Notes)</th>
+                    <th className="px-6 py-5">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {stats.filteredExpenses.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-8 py-20 text-center text-slate-400 italic text-sm">
-                        ┘ä╪º ┘è┘ê╪¼╪» ┘à╪╡╪º╪▒┘è┘ü ┘à╪╖╪º╪¿┘é╪⌐ ┘ä┘ä╪¿╪¡╪½ ╪ú┘ê ╪º┘ä╪¬╪╡┘å┘è┘ü ╪º┘ä┘à╪«╪¬╪º╪▒
+                        لا يوجد مصاريف مطابقة للبحث أو التصنيف المختار
                       </td>
                     </tr>
                   ) : (
@@ -727,7 +727,7 @@ export function Accounts() {
                                 }}
                               />
                             ) : (
-                              <span className="text-sm font-black text-slate-800">{exp.amount.toLocaleString()} <span className="text-[10px]">╪¼.┘à</span></span>
+                              <span className="text-sm font-black text-slate-800">{exp.amount.toLocaleString()} <span className="text-[10px]">ج.م</span></span>
                             )}
                           </td>
                           <td className="px-6 py-5">
@@ -740,17 +740,17 @@ export function Accounts() {
                                 onChange={(e) => setNewExpense({ ...newExpense, paidAmount: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
                               />
                             ) : (
-                              <span className="text-sm font-black text-emerald-600 font-sans">{paid.toLocaleString()} <span className="text-[10px] font-sans">╪¼.┘à</span></span>
+                              <span className="text-sm font-black text-emerald-600 font-sans">{paid.toLocaleString()} <span className="text-[10px] font-sans">ج.م</span></span>
                             )}
                           </td>
                           <td className="px-6 py-5">
                             {debt > 0 ? (
                               <span className="text-xs font-black text-red-650 bg-red-50 border border-red-100 px-2.5 py-1 rounded-xl block w-max font-sans">
-                                {debt.toLocaleString()} ╪¼.┘à ΓÜá∩╕Å
+                                {debt.toLocaleString()} ج.م ⚠️
                               </span>
                             ) : (
                               <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-xl block w-max">
-                                ┘à╪│╪»╪» ┘â╪º┘à┘ä Γ£à
+                                مسدد كامل ✅
                               </span>
                             )}
                           </td>
@@ -759,14 +759,14 @@ export function Accounts() {
                               {editingId === exp.id ? (
                                 <input 
                                   type="text"
-                                  placeholder="╪ú┘è ┘à┘ä╪º╪¡╪╕╪º╪¬..."
+                                  placeholder="أي ملاحظات..."
                                   className="text-[10px] text-slate-400 font-bold bg-slate-50 border border-blue-100 rounded px-2 py-1 outline-none w-full animate-pulse"
                                   value={newExpense.notes || ''}
                                   onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })}
                                 />
                               ) : (
                                 <p className="text-[10px] text-slate-400 font-bold truncate max-w-xs font-sans">
-                                  {exp.notes || '┘ä╪º ┘è┘ê╪¼╪» ┘à┘ä╪º╪¡╪╕╪º╪¬'}
+                                  {exp.notes || 'لا يوجد ملاحظات'}
                                 </p>
                               )}
                             </div>
@@ -814,33 +814,33 @@ export function Accounts() {
           <div className="bg-slate-900 text-white p-6 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
             <Coins size={120} className="absolute -top-4 -left-4 text-white/5 -rotate-12 group-hover:rotate-0 transition-transform" />
             <div className="relative text-right space-y-1">
-              <span className="text-emerald-400 font-extrabold text-[10px] tracking-wider uppercase">╪º┘ä╪¡╪│╪º╪¿ ╪º┘ä╪Ñ╪¼┘à╪º┘ä┘è ┘ä┘ä╪¬╪╡┘å┘è╪╣ ╪¡╪│╪¿ ╪º┘ä┘ü┘ä╪¬╪▒╪⌐ ╪º┘ä┘à╪¡╪»╪»╪⌐</span>
-              <h3 className="text-xl font-black text-white">╪¡╪│╪º╪¿ ╪¬┘â┘ä┘ü╪⌐ ╪¬╪╡┘å┘è╪╣ ╪º┘ä╪╖┘ä╪¿╪º╪¬</h3>
-              <p className="text-slate-400 font-bold text-xs">┘à╪¿┘å┘è ╪╣┘ä┘ë ╪º┘ä┘ü╪¬╪▒╪º╪¬ ╪º┘ä╪▓┘à┘å┘è╪⌐ ╪º┘ä┘à╪¡╪»╪»╪⌐ ┘ê╪¡╪º┘ä╪º╪¬ ╪º┘ä╪ú┘ê╪▒╪»╪▒╪º╪¬ ╪º┘ä┘å╪┤╪╖╪⌐ ┘ü┘è ╪º┘ä┘ü┘ä╪º╪¬╪▒</p>
+              <span className="text-emerald-400 font-extrabold text-[10px] tracking-wider uppercase">الحساب الإجمالي للتصنيع حسب الفلترة المحددة</span>
+              <h3 className="text-xl font-black text-white">حساب تكلفة تصنيع الطلبات</h3>
+              <p className="text-slate-400 font-bold text-xs">مبني على الفترات الزمنية المحددة وحالات الأوردرات النشطة في الفلاتر</p>
             </div>
             
             <div className="relative flex flex-row items-center gap-6 divide-x divide-x-reverse divide-white/10">
               <div className="text-right px-4">
-                <span className="block text-[10px] font-black text-slate-400 mb-1">╪Ñ╪¼┘à╪º┘ä┘è ╪¬┘â┘ä┘ü╪⌐ ╪º┘ä╪¬╪╡┘å┘è╪╣</span>
+                <span className="block text-[10px] font-black text-slate-400 mb-1">إجمالي تكلفة التصنيع</span>
                 <div className="flex items-baseline gap-1 justify-end font-sans">
                   <span className="text-4xl font-black text-emerald-400">{workshopStats.totalMfgCost.toLocaleString()}</span>
-                  <span className="text-xs font-bold text-slate-400">╪¼.┘à</span>
+                  <span className="text-xs font-bold text-slate-400">ج.م</span>
                 </div>
               </div>
               
               <div className="text-right px-4">
-                <span className="block text-[10px] font-black text-slate-400 mb-1">╪╣╪»╪» ╪º┘ä╪╖┘ä╪¿╪º╪¬ (╪º┘ä╪ú┘ê╪▒╪»╪▒╪º╪¬)</span>
+                <span className="block text-[10px] font-black text-slate-400 mb-1">عدد الطلبات (الأوردرات)</span>
                 <div className="flex items-baseline gap-1 justify-end font-sans">
                   <span className="text-3xl font-black text-white">{workshopStats.filteredOrdersCount}</span>
-                  <span className="text-xs font-bold text-slate-400">╪ú┘ê╪▒╪»╪▒</span>
+                  <span className="text-xs font-bold text-slate-400">أوردر</span>
                 </div>
               </div>
 
               <div className="text-right px-4">
-                <span className="block text-[10px] font-black text-slate-400 mb-1">╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘é╪╖╪╣ ╪º┘ä┘à╪┤┘à┘ê┘ä╪⌐</span>
+                <span className="block text-[10px] font-black text-slate-400 mb-1">إجمالي القطع المشمولة</span>
                 <div className="flex items-baseline gap-1 justify-end font-sans">
                   <span className="text-3xl font-black text-white">{workshopStats.totalItemsCount}</span>
-                  <span className="text-xs font-bold text-slate-400">┘é╪╖╪╣╪⌐</span>
+                  <span className="text-xs font-bold text-slate-400">قطعة</span>
                 </div>
               </div>
             </div>
@@ -850,12 +850,12 @@ export function Accounts() {
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-50 flex items-center justify-between">
               <div>
-                <h3 className="font-black text-lg text-slate-800">╪│╪¼┘ä ╪¡╪│╪º╪¿╪º╪¬ ╪¬┘â╪º┘ä┘è┘ü ╪¬╪╡┘å┘è╪╣ ╪º┘ä╪╖┘ä╪¿╪º╪¬</h3>
-                <p className="text-xs text-slate-400 font-bold mt-1">╪¬┘ü╪º╪╡┘è┘ä ╪¬┘â╪º┘ä┘è┘ü ╪º┘ä╪¬╪╡┘å┘è╪╣ ╪º┘ä┘â┘ä┘è╪⌐ ┘ä┘â┘ä ╪ú┘ê╪▒╪»╪▒ ┘à╪│╪¬╪¡┘é</p>
+                <h3 className="font-black text-lg text-slate-800">سجل حسابات تكاليف تصنيع الطلبات</h3>
+                <p className="text-xs text-slate-400 font-bold mt-1">تفاصيل تكاليف التصنيع الكلية لكل أوردر مستحق</p>
               </div>
               <div className="flex bg-slate-50 px-4 py-2 rounded-full border border-slate-100 gap-1.5 text-xs font-black text-blue-600">
-                <span>╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä╪ú┘é┘à╪┤╪⌐ ┘ê╪º┘ä┘à┘ê╪»┘è┘ä╪º╪¬:</span>
-                <span>{workshopStats.totalItemsCount} ┘é╪╖╪╣╪⌐</span>
+                <span>إجمالي الأقمشة والموديلات:</span>
+                <span>{workshopStats.totalItemsCount} قطعة</span>
               </div>
             </div>
 
@@ -863,19 +863,19 @@ export function Accounts() {
               <table className="w-full text-right border-collapse">
                 <thead>
                   <tr className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border-b border-slate-100">
-                    <th className="px-6 py-5">╪º┘ä╪ú┘ê╪▒╪»╪▒ / ╪º┘ä╪¬╪º╪▒┘è╪«</th>
-                    <th className="px-6 py-5">╪º┘ä╪╣┘à┘è┘ä</th>
-                    <th className="px-6 py-5">╪¡╪º┘ä╪⌐ ╪º┘ä╪ú┘ê╪▒╪»╪▒</th>
-                    <th className="px-6 py-5 text-center">╪╣╪»╪» ╪º┘ä┘é╪╖╪╣</th>
-                    <th className="px-6 py-5">╪¬┘ü╪º╪╡┘è┘ä ╪º┘ä┘à┘ê╪»┘è┘ä╪º╪¬ ┘ê╪¬┘â┘ä┘ü╪⌐ ╪º┘ä╪¬╪╡┘å┘è╪╣</th>
-                    <th className="px-6 py-5 font-black text-slate-800 text-left">╪Ñ╪¼┘à╪º┘ä┘è ╪¬┘â┘ä┘ü╪⌐ ╪º┘ä╪¬╪╡┘å┘è╪╣</th>
+                    <th className="px-6 py-5">الأوردر / التاريخ</th>
+                    <th className="px-6 py-5">العميل</th>
+                    <th className="px-6 py-5">حالة الأوردر</th>
+                    <th className="px-6 py-5 text-center">عدد القطع</th>
+                    <th className="px-6 py-5">تفاصيل الموديلات وتكلفة التصنيع</th>
+                    <th className="px-6 py-5 font-black text-slate-800 text-left">إجمالي تكلفة التصنيع</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {workshopStats.orderDetails.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-8 py-20 text-center text-slate-400 italic text-sm">
-                        ┘ä╪º ╪¬┘ê╪¼╪» ╪ú┘ê╪▒╪»╪▒╪º╪¬ ┘à╪╖╪º╪¿┘é╪⌐ ┘ä┘ä╪¿╪¡╪½ ╪ú┘ê ╪º┘ä┘ü┘ä╪º╪¬╪▒ ╪º┘ä┘à╪«╪¬╪º╪▒╪⌐
+                        لا توجد أوردرات مطابقة للبحث أو الفلاتر المختارة
                       </td>
                     </tr>
                   ) : (
@@ -896,7 +896,7 @@ export function Accounts() {
                           <div className="flex flex-col">
                             <span className="text-sm font-black text-slate-700">{order.customerName}</span>
                             {order.childName && (
-                              <span className="text-[10px] text-blue-500 font-extrabold bg-blue-50/50 px-1.5 py-0.5 rounded-md w-max mt-0.5">╪╖┘ü┘ä: {order.childName}</span>
+                              <span className="text-[10px] text-blue-500 font-extrabold bg-blue-50/50 px-1.5 py-0.5 rounded-md w-max mt-0.5">طفل: {order.childName}</span>
                             )}
                           </div>
                         </td>
@@ -910,15 +910,15 @@ export function Accounts() {
                             order.status === 'cancelled' ? 'bg-slate-50 text-slate-400 border border-slate-100' :
                             'bg-slate-100 text-slate-600'
                           }`}>
-                            {order.status === 'delivered' ? '╪¬┘à ╪º┘ä╪¬┘ê╪╡┘è┘ä Γ£à' :
-                             order.status === 'out_for_delivery' ? '╪«╪▒╪¼ ┘à╪╣ ╪º┘ä┘à┘å╪»┘ê╪¿ ≡ƒÜÜ' :
-                             order.status === 'in_delivery' ? '┘é┘è╪» ╪º┘ä╪¬┘ê╪╡┘è┘ä ≡ƒôª' :
-                             order.status === 'manufactured' ? '╪¬┘à ╪º┘ä╪¬╪╡┘å┘è╪╣ ≡ƒº╡' :
-                             order.status === 'cancelled' ? '┘à┘ä╪║┘è Γ¥î' :
-                             order.status === 'delayed' ? '╪¬┘à ╪¬╪ú╪¼┘è┘ä┘ç ΓÅ│' :
-                             order.status === 'returned' ? '┘à╪▒╪¬╪¼╪╣ ┘â┘ä┘è ΓÜá∩╕Å' :
-                             order.status === 'returned_partial' ? '┘à╪▒╪¬╪¼╪╣ ╪¼╪▓╪ª┘è ≡ƒîÇ' :
-                             '╪¼╪»┘è╪» ≡ƒåò'}
+                            {order.status === 'delivered' ? 'تم التوصيل ✅' :
+                             order.status === 'out_for_delivery' ? 'خرج مع المندوب 🚚' :
+                             order.status === 'in_delivery' ? 'قيد التوصيل 📦' :
+                             order.status === 'manufactured' ? 'تم التصنيع 🧵' :
+                             order.status === 'cancelled' ? 'ملغي ❌' :
+                             order.status === 'delayed' ? 'تم تأجيله ⏳' :
+                             order.status === 'returned' ? 'مرتجع كلي ⚠️' :
+                             order.status === 'returned_partial' ? 'مرتجع جزئي 🌀' :
+                             'جديد 🆕'}
                           </span>
                         </td>
 
@@ -934,12 +934,12 @@ export function Accounts() {
                               <div key={i} className="text-[11px] font-bold text-slate-600 bg-slate-50 p-2 rounded-xl space-y-1 border border-slate-100/30 text-right">
                                 <div className="flex justify-between font-black text-slate-700">
                                   <span>{item.name} {(item.color || item.size) ? `(${item.color || ''} - ${item.size || ''})` : ''} x {item.quantity}</span>
-                                  <span className="text-slate-800 font-mono font-black">{item.itemTotalMfg.toLocaleString()} ╪¼.┘à</span>
+                                  <span className="text-slate-800 font-mono font-black">{item.itemTotalMfg.toLocaleString()} ج.م</span>
                                 </div>
                                 {item.priceDiff > 0 && (
                                   <div className="text-[9px] text-purple-600 flex justify-between font-sans">
-                                    <span>┘ü╪▒┘ê┘é╪º╪¬ ╪¬╪╣╪»┘è┘ä ┘à┘é╪º╪│ ╪╣┘à┘è┘ä:</span>
-                                    <span>+{item.priceDiff} ╪¼.┘à</span>
+                                    <span>فروقات تعديل مقاس عميل:</span>
+                                    <span>+{item.priceDiff} ج.م</span>
                                   </div>
                                 )}
                               </div>
@@ -949,7 +949,7 @@ export function Accounts() {
 
                         {/* Cumulative Order Cost */}
                         <td className="px-6 py-5 text-left font-sans text-sm font-black text-slate-900">
-                          {orderMfgCost.toLocaleString()} ╪¼.┘à
+                          {orderMfgCost.toLocaleString()} ج.م
                         </td>
                       </tr>
                     ))
@@ -969,11 +969,11 @@ export function Accounts() {
             <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 text-right animate-in fade-in zoom-in-95 duration-200" dir="rtl">
               <div className="text-center space-y-3">
                 <div className="w-12 h-12 bg-red-50 text-red-650 rounded-full flex items-center justify-center mx-auto text-xl">
-                  ΓÜá∩╕Å
+                  ⚠️
                 </div>
-                <h3 className="text-lg font-black text-slate-800">╪¬╪ú┘â┘è╪» ╪¡╪░┘ü ╪º┘ä┘à╪╡╪▒┘ê┘ü</h3>
+                <h3 className="text-lg font-black text-slate-800">تأكيد حذف المصروف</h3>
                 <p className="text-xs text-slate-500 font-bold leading-relaxed font-sans">
-                  ┘ç┘ä ╪ú┘å╪¬┘É ┘à╪¬╪ú┘â╪»╪⌐ ┘à┘å ╪▒╪║╪¿╪¬┘â┘É ┘ü┘è ╪¡╪░┘ü ┘ç╪░╪º ╪º┘ä┘à╪╡╪▒┘ê┘ü <strong className="text-slate-800">"{exp?.description || ''}"</strong> ╪¿┘é┘è┘à╪⌐ <strong className="text-slate-800">{exp?.amount || 0} ╪¼.┘à</strong> ┘å┘ç╪º╪ª┘è╪º┘ï╪ƒ ┘ä╪º ┘è┘à┘â┘å ╪º┘ä╪¬╪▒╪º╪¼╪╣ ╪╣┘å ┘ç╪░┘ç ╪º┘ä╪«╪╖┘ê╪⌐.
+                  هل أنتِ متأكدة من رغبتكِ في حذف هذا المصروف <strong className="text-slate-800">"{exp?.description || ''}"</strong> بقيمة <strong className="text-slate-800">{exp?.amount || 0} ج.م</strong> نهائياً؟ لا يمكن التراجع عن هذه الخطوة.
                 </p>
               </div>
               <div className="mt-6 flex gap-3">
@@ -985,14 +985,14 @@ export function Accounts() {
                   }}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-2xl transition-all shadow-md shadow-red-100"
                 >
-                  ┘å╪╣┘à╪î ╪º╪¡╪░┘ü ┘å┘ç╪º╪ª┘è╪º┘ï
+                  نعم، احذف نهائياً
                 </button>
                 <button
                   type="button"
                   onClick={() => setExpenseToDelete(null)}
                   className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-3 rounded-2xl transition-all"
                 >
-                  ╪Ñ┘ä╪║╪º╪í ╪º┘ä╪¬╪▒╪º╪¼╪╣
+                  إلغاء التراجع
                 </button>
               </div>
             </div>
