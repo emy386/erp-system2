@@ -350,7 +350,6 @@ export function Accounts() {
           users={users?.length} workers={workers?.length} orders={orders?.length} expenses={generalExpenses?.length} products={products?.length}
         </p>
       </div>
-      </div>
     </div>
   );
 }
