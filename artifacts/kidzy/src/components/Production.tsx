@@ -1637,7 +1637,7 @@ export function Production() {
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-lg">
-                            {worker.name[0]}
+                            {worker?.name?.[0] ?? ''}
                           </div>
                           <div className="text-right">
                             <h4 className="font-black text-slate-800">{worker.name}</h4>
