@@ -15,6 +15,7 @@ import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
 import { Staff } from './components/Staff';
 import { Accounts } from './components/Accounts';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { motion } from 'motion/react';
 
 type Permission = 'dashboard' | 'orders' | 'inventory' | 'production' | 'staff' | 'accounts';
@@ -125,7 +126,7 @@ function AppContent() {
             <Route path="/inventory" element={<PageTransition><ProtectedRoute permission="inventory"><Inventory /></ProtectedRoute></PageTransition>} />
             <Route path="/production" element={<PageTransition><ProtectedRoute permission="production"><Production /></ProtectedRoute></PageTransition>} />
             <Route path="/staff" element={<PageTransition><ProtectedRoute permission="staff"><Staff /></ProtectedRoute></PageTransition>} />
-            <Route path="/accounts" element={<PageTransition><ProtectedRoute permission="accounts"><Accounts /></ProtectedRoute></PageTransition>} />
+            <Route path="/accounts" element={<PageTransition><ProtectedRoute permission="accounts"><ErrorBoundary><Accounts /></ErrorBoundary></ProtectedRoute></PageTransition>} />
             <Route path="/no-access" element={
               <PageTransition>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
