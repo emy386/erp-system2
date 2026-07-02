@@ -194,54 +194,70 @@ export const Orders: React.FC = () => {
 
   // Parse order text locally — no AI, no API, pure regex
   const parseOrderText = (text: string) => {
+    // 1. تنظيف وتحويل الأرقام العربية إلى إنجليزية
+    const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    const westernDigits = ['0','1','2','3','4','5','6','7','8','9'];
+    let normalizedText = text;
+    arabicDigits.forEach((digit, i) => {
+      normalizedText = normalizedText.split(digit).join(westernDigits[i]);
+    });
+
+    const lines = normalizedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const governorates = ['القاهرة','الجيزة','الإسكندرية','الدقهلية','الغربية','المنوفية','الشرقية','القليوبية','البحيرة','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','مطروح','شمال سيناء','جنوب سيناء','الوادي الجديد','البحر الأحمر'];
 
-    // تنظيف النص
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // 2. استخراج الوسوم (Tags) بغض النظر عن الترتيب
+    const getVal = (patterns: RegExp[]) => {
+      for (const p of patterns) {
+        const match = normalizedText.match(p);
+        if (match) return match[1].trim();
+      }
+      return '';
+    };
+
+    const customerPhone = normalizedText.match(/01[0-9]{9}/)?.[0] || '';
+    const customerPhone2 = normalizedText.match(/(?:تاني|ثاني)\s*[:=]?\s*(01[0-9]{9})/)?.[1] || '';
+    const governorate = governorates.find(g => normalizedText.includes(g)) || '';
+    const customerName = getVal([/(?:الاسم|العميل|لـ|ل)\s*[:=]?\s*([^\n,]+)/i, /^([^\n,0-9]{3,})/i]);
+    const address = getVal([/(?:العنوان|عنوان)\s*[:=]?\s*([^\n]+)/i]);
+    const childName = getVal([/(?:اسم البنوتة|اسم الطفل)[:=]?\s*([^\n,]+)/i]);
     
-    // 1. الهاتف
-    const phoneMatches = text.match(/(0?1[0-9]{9})/g) || [];
-    const customerPhone = phoneMatches[0] || '';
-    const customerPhone2 = phoneMatches[1] || '';
+    // 3. تحليل مالي وشحن
+    const shippingPaid = /\b(?:تم دفع الشحن|شحن مدفوع|شحن خالص)\b/i.test(normalizedText);
+    const shippingAmount = parseInt(normalizedText.match(/(?:شحن)\s*[:=]?\s*(\d+)/i)?.[1] || '0');
+    const discount = parseInt(normalizedText.match(/(?:خصم)\s*[:=]?\s*(\d+)/i)?.[1] || '0');
+    const deliveryDuration = /\b(?:مستعجل|عاجل|ضروري)\b/i.test(normalizedText) ? 'urgent' as const : 'normal' as const;
 
-    // 2. المحافظة
-    const governorate = governorates.find(g => text.includes(g)) || '';
-
-    // 3. الاسم (أول سطر غالباً، أو بعد "لـ")
-    let customerName = '';
-    const nameMatch = text.match(/(?:الاسم|العميل|لـ|ل)\s*[:=]?\s*([^\n,]+)/i);
-    if (nameMatch) {
-      customerName = nameMatch[1].trim();
-    } else if (lines.length > 0 && !/0?1[0-9]{9}/.test(lines[0])) {
-      customerName = lines[0];
-    }
-
-    // 4. العنوان
-    let address = '';
-    const addrMatch = text.match(/(?:العنوان|عنوان)\s*[:=]?\s*([^\n]+)/i);
-    if (addrMatch) address = addrMatch[1].trim();
-
-    // 5. باقي البيانات
-    const discount = parseFloat(text.match(/(?:خصم)\s*[:=]?\s*(\d+)/i)?.[1] || '0');
-    const deliveryDuration = /\b(?:عاجل|مستعجل|urgent)\b/i.test(text) ? 'urgent' as const : 'normal' as const;
-    const notes = text.match(/(?:ملاحظات)\s*[:=]?\s*([^\n]+)/i)?.[1]?.trim() || '';
-    const childName = text.match(/(?:اسم الطفلة|اسم الطفل)\s*[:=]?\s*([^\n,]+)/i)?.[1]?.trim() || '';
-
-    // 6. المنتجات (استخراج ذكي)
+    // 4. استخراج المنتجات (بمرونة عالية)
     const parsedItems: { name: string; quantity: number; price: number; color?: string; size?: string }[] = [];
-    
     lines.forEach(line => {
-      // بحث عن أرقام (الكمية والسعر)
-      const nums = line.match(/\d+/g);
-      if (nums && nums.length >= 2) {
-        const price = parseInt(nums[nums.length - 1]);
-        const quantity = parseInt(nums[nums.length - 2]);
-        const name = line.replace(/\d+/g, '').replace(/[:=،,-]/g, '').trim() || 'منتج';
-        parsedItems.push({ name, quantity, price });
+      // البحث عن أي سطر يحتوي على سعر أو أرقام
+      const priceMatch = line.match(/(\d+)(?:\s*(?:ج|جنيه|ج\.م))/i);
+      const qtyMatch = line.match(/(?:عدد|x|×)\s*(\d+)/i);
+      
+      if (priceMatch) {
+        const price = parseInt(priceMatch[1]);
+        const quantity = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+        const name = line.replace(/(\d+)(?:\s*(?:ج|جنيه|ج\.م))/i, '').replace(/[:=،,-]/g, '').trim() || 'منتج';
+        if (name && price > 0) {
+            parsedItems.push({ name, quantity, price });
+        }
       }
     });
 
-    return { customerName, childName, customerPhone, customerPhone2, governorate, address, discount, deliveryDuration, notes, parsedItems };
+    return { 
+      customerName, 
+      childName, 
+      customerPhone, 
+      customerPhone2, 
+      governorate, 
+      address, 
+      discount, 
+      deliveryDuration, 
+      shippingPaid,
+      shippingAmount,
+      notes: normalizedText.match(/(?:ملاحظات)\s*[:=]?\s*([^\n]+)/i)?.[1]?.trim() || '', 
+      parsedItems 
+    };
   };
 
   const handleLocally = () => {
@@ -271,16 +287,18 @@ export const Orders: React.FC = () => {
     setFormState(prev => ({
       ...prev,
       customerName: parsed.customerName || prev.customerName,
-      childName: parsed.childName || prev.childName,
       customerPhone: parsed.customerPhone || prev.customerPhone,
       customerPhone2: parsed.customerPhone2 || prev.customerPhone2,
       governorate: parsed.governorate || prev.governorate,
       address: parsed.address || prev.address,
       discount: parsed.discount || prev.discount || 0,
-      deliveryDuration: parsed.deliveryDuration,
+      deliveryDuration: parsed.deliveryDuration || prev.deliveryDuration,
+      shippingPaid: parsed.shippingPaid !== undefined ? parsed.shippingPaid : prev.shippingPaid,
+      shippingAmount: parsed.shippingAmount || prev.shippingAmount,
       notes: parsed.notes || prev.notes,
       items: transformedItems.length > 0 ? transformedItems : prev.items,
     }));
+
     setModalType("manual");
   };
 
