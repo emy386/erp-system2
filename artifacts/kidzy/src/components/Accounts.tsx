@@ -98,27 +98,18 @@ export function Accounts() {
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     };
 
-    // 1. Money Out (Expenses + Payments + Manufacturing Cost)
+    // 1. Money Out (General Expenses + Manufacturing Costs)
+    // Removed worker payments from totalOut to prevent double-counting (we only count the cost of the work itself)
     const monthGeneral = (generalExpenses || []).filter(e => isInMonth(e.date)).reduce((sum, e) => {
       const paid = e.paidAmount !== undefined ? e.paidAmount : e.amount;
       return sum + (paid || 0);
     }, 0);
-    const monthWorkerPayments = (workers || []).flatMap(w => (w.payments || []).filter(p => isInMonth(p.date))).reduce((sum, p) => sum + (p.amount || 0), 0);
-    const monthStaffExtra = (users || []).flatMap(u => (u.variableTasks || []).filter(t => isInMonth(t.date))).reduce((sum, t) => sum + (t.amount || 0), 0);
-    const monthStaffFixed = (users || []).reduce((sum, u) => sum + (u.staffRoles || []).reduce((ra, r) => ra + (r.pay || 0), 0), 0);
     
-    // Month Manufacturing Costs using the precise formula
-    const monthOrders = (orders || []).filter(o => isInMonth(o.creationDate) && o.status !== 'cancelled');
-    const monthMfgCost = monthOrders.reduce((sum, order) => {
-      const orderItemsMfgCost = (order.items || []).reduce((itemAcc, item) => {
-        const product = products.find(p => p.id === item.productId);
-        const unitMfgCost = product ? ((product.materialsCost || 0) + (product.workshopFee || 0)) : 0;
-        return itemAcc + (unitMfgCost * item.quantity);
-      }, 0);
-      return sum + orderItemsMfgCost;
-    }, 0);
+    // Month Manufacturing Costs using the PRECISE ACTUALS from ProductionIntakes
+    const monthIntakes = (productionIntakes || []).filter(i => isInMonth(i.date));
+    const monthMfgCost = monthIntakes.reduce((sum, intake) => sum + (intake.totalCost || 0), 0);
 
-    const totalOut = monthGeneral + monthWorkerPayments + monthStaffExtra + monthStaffFixed + monthMfgCost;
+    const totalOut = monthGeneral + monthMfgCost;
 
     const getOrderRevenue = (o: Order) => {
       if (o.status === 'cancelled' || o.status === 'returned') return 0;
