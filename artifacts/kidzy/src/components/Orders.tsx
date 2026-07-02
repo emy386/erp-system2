@@ -196,135 +196,50 @@ export const Orders: React.FC = () => {
   const parseOrderText = (text: string) => {
     const governorates = ['القاهرة','الجيزة','الإسكندرية','الدقهلية','الغربية','المنوفية','الشرقية','القليوبية','البحيرة','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','مطروح','شمال سيناء','جنوب سيناء','الوادي الجديد','البحر الأحمر'];
 
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const full = text;
+    // تنظيف النص
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    // 1. الهاتف
+    const phoneMatches = text.match(/(0?1[0-9]{9})/g) || [];
+    const customerPhone = phoneMatches[0] || '';
+    const customerPhone2 = phoneMatches[1] || '';
 
-    // try labeled extraction first, then fallback to positional
-    const extract = (patterns: RegExp[]): string => {
-      for (const p of patterns) {
-        const m = full.match(p);
-        if (m?.[1]?.trim()) return m[1].trim();
-      }
-      return '';
-    };
+    // 2. المحافظة
+    const governorate = governorates.find(g => text.includes(g)) || '';
 
-    // ── labeled extraction (الاسم: value, تليفون: value ...) ──
-    let customerName = extract([
-      /(?:اسم\s*)?العميل\s*[:=]\s*(.+)/i,
-      /الاسم\s*[:=]\s*(.+)/i,
-      /أوردر\s+(?:لـ|ل)\s*(.+?)(?:[،,]\s|$|\n)/im,
-    ]);
-    let childName = extract([
-      /(?:اسم\s*)?(?:الطفل|البنوتة|الولد)\s*[:=]\s*(.+)/i,
-    ]);
-    let customerPhone = extract([
-      /(?:تليفون|موبايل|واتس|phone)\s*(?:\d\s*)?[:=]\s*(0?1[0-9]{9})\b/i,
-      /(?:^|\n|\s)(0?1[0-9]{9})\b/,
-    ]);
-    let customerPhone2 = extract([
-      /(?:تليفون|موبايل|واتس|phone)\s*(?:2|آخر|تاني|ثاني)\s*[:=]\s*(0?1[0-9]{9})\b/i,
-    ]);
-    const govKeyword = extract([
-      /(?:المحافظة|محافظة)\s*[:=]\s*(.+)/i,
-    ]);
-    let governorate = govKeyword || governorates.find(g => full.includes(g)) || '';
-    let address = extract([
-      /(?:العنوان|عنوان)\s*[:=]\s*(.+)/i,
-    ]);
-    const discount = parseFloat(extract([
-      /(?:الخصم|خصم)\s*[:=]\s*(\d+)/i,
-    ])) || 0;
-    const deliveryDuration = /\b(?:عاجل|مستعجل|urgent)\b/i.test(full) ? 'urgent' as const : 'normal' as const;
-    let notes = extract([/ملاحظات?\s*[:=]\s*(.+)/i]);
-
-    // ── if no labeled match → positional fallback ──
-    // For the first few lines: try name / phone / address positionally
-    const nonEmpty = lines.filter(l => !/^(?:عاجل|مستعجل|ملاحظات?|الخصم|خصم|المحافظة|محافظة|العنوان|عنوان|تليفون|موبايل|واتس|phone|الاسم|العميل|أوردر)/i.test(l));
-
-    if (!customerName && nonEmpty.length > 0) {
-      // first non‑label line that's not a phone or governorate
-      const first = nonEmpty[0];
-      const hasPhone = /0?1[0-9]{9}/.test(first);
-      const hasGov = governorates.some(g => first.includes(g));
-      if (!hasPhone && !hasGov && first.length > 3) customerName = first;
+    // 3. الاسم (أول سطر غالباً، أو بعد "لـ")
+    let customerName = '';
+    const nameMatch = text.match(/(?:الاسم|العميل|لـ|ل)\s*[:=]?\s*([^\n,]+)/i);
+    if (nameMatch) {
+      customerName = nameMatch[1].trim();
+    } else if (lines.length > 0 && !/0?1[0-9]{9}/.test(lines[0])) {
+      customerName = lines[0];
     }
 
-    if (!customerPhone && lines.length > 0) {
-      // find any 01x phone anywhere in lines
-      for (const l of lines) {
-        const m = l.match(/(0?1[0-9]{9})\b/);
-        if (m) { customerPhone = m[1]; break; }
-      }
-    }
+    // 4. العنوان
+    let address = '';
+    const addrMatch = text.match(/(?:العنوان|عنوان)\s*[:=]?\s*([^\n]+)/i);
+    if (addrMatch) address = addrMatch[1].trim();
 
-    if (!governorate && lines.length > 0) {
-      for (const l of lines) {
-        const found = governorates.find(g => l.includes(g));
-        if (found) { governorate = found; break; }
-      }
-    }
-    if (!address && lines.length > 2 && !customerName && !customerPhone) {
-      // middle lines that aren't pure numbers could be address
-      const mid = lines.find(l =>
-        l.length > 8 &&
-        !/^0?1[0-9]{9}$/.test(l) &&
-        !governorates.some(g => l === g)
-      );
-      if (mid) address = mid;
-    }
+    // 5. باقي البيانات
+    const discount = parseFloat(text.match(/(?:خصم)\s*[:=]?\s*(\d+)/i)?.[1] || '0');
+    const deliveryDuration = /\b(?:عاجل|مستعجل|urgent)\b/i.test(text) ? 'urgent' as const : 'normal' as const;
+    const notes = text.match(/(?:ملاحظات)\s*[:=]?\s*([^\n]+)/i)?.[1]?.trim() || '';
+    const childName = text.match(/(?:اسم الطفلة|اسم الطفل)\s*[:=]?\s*([^\n,]+)/i)?.[1]?.trim() || '';
 
-    // ── Items ───────────────────────────────────────
-    let rest = full;
-    const strip = [
-      /(?:اسم\s*)?العميل\s*[:=].*/i,
-      /الاسم\s*[:=].*/i,
-      /أوردر\s+(?:لـ|ل)\s.*/i,
-      /(?:اسم\s*)?(?:الطفل|البنوتة|الولد)\s*[:=].*/i,
-      /(?:تليفون|موبايل|واتس|phone)\s*(?:\d\s*)?[:=]\s*0?1[0-9]{9}\b.*/i,
-      /0?1[0-9]{9}\b.*/,
-      /(?:المحافظة|محافظة)\s*[:=].*/i,
-      /(?:العنوان|عنوان)\s*[:=].*/i,
-      /(?:الخصم|خصم)\s*[:=].*/i,
-      /ملاحظات?\s*[:=].*/i,
-      /عاجل|مستعجل/i,
-    ];
-    for (const p of strip) rest = rest.replace(p, '');
-
-    const itemLines = rest.split('\n').map(l => l.trim()).filter(Boolean);
+    // 6. المنتجات (استخراج ذكي)
     const parsedItems: { name: string; quantity: number; price: number; color?: string; size?: string }[] = [];
-
-    for (const line of itemLines) {
-      let size = '';
-      let color = '';
-      let clean = line;
-      const sizeMatch = clean.match(/(?:مقاس|size)\s*[:=]?\s*(\S+)/i);
-      if (sizeMatch) { size = sizeMatch[1]; clean = clean.replace(sizeMatch[0], ''); }
-      const colorMatch = clean.match(/(?:لون|color)\s*[:=]?\s*(\S+)/i);
-      if (colorMatch) { color = colorMatch[1]; clean = clean.replace(colorMatch[0], ''); }
-
-      // support "عدد 2" or "x2" or "2 قطعة"
-      const qtyMatch = clean.match(/(?:عدد|x|×)\s*(\d+)/i);
-      const priceMatch = clean.match(/(?:سعر|بـ?|جنيه|ج\.?)\s*(\d+)/i);
-
-      if (qtyMatch && priceMatch) {
-        const name = clean
-          .replace(/(?:عدد|x|×)\s*\d+/i, '')
-          .replace(/(?:سعر|بـ?|جنيه|ج\.?)\s*\d+/i, '')
-          .replace(/[\s,،\-]+/g, ' ')
-          .trim();
-        if (name) parsedItems.push({ name, quantity: parseInt(qtyMatch[1]), price: parseInt(priceMatch[1]), color, size });
-      } else {
-        // fallback: split by spaces, last two numbers = qty + price
-        const parts = clean.split(/[\s,،\-]+/).filter(Boolean);
-        const numbers = parts.map(Number).filter(n => !isNaN(n));
-        if (numbers.length < 2) continue;
-        const price = numbers[numbers.length - 1];
-        const qty = numbers[numbers.length - 2];
-        const nameParts = parts.filter(p => isNaN(Number(p)));
-        const name = nameParts.join(' ') || 'قطعة';
-        if (qty > 0 && price >= 0 && name) parsedItems.push({ name, quantity: qty, price, color, size });
+    
+    lines.forEach(line => {
+      // بحث عن أرقام (الكمية والسعر)
+      const nums = line.match(/\d+/g);
+      if (nums && nums.length >= 2) {
+        const price = parseInt(nums[nums.length - 1]);
+        const quantity = parseInt(nums[nums.length - 2]);
+        const name = line.replace(/\d+/g, '').replace(/[:=،,-]/g, '').trim() || 'منتج';
+        parsedItems.push({ name, quantity, price });
       }
-    }
+    });
 
     return { customerName, childName, customerPhone, customerPhone2, governorate, address, discount, deliveryDuration, notes, parsedItems };
   };
