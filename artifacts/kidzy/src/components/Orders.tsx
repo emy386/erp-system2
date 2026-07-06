@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { STATUS_DETAILS, GOVERNORATES, ORDER_SOURCES } from '../lib/constants';
 
+const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
 export const Orders: React.FC = () => {
   const { orders, setOrders, products } = useApp();
 
@@ -585,6 +587,11 @@ export const Orders: React.FC = () => {
     if (confirm("🚨 هل أنت متأكد من حذف هذا الأوردر من السجلات نهائياً؟")) {
       setOrders(orders.filter(o => o.id !== id));
       if (viewingOrder?.id === id) setViewingOrder(null);
+      const dbKey = import.meta.env.VITE_DB_PROXY_KEY || "";
+      fetch(`/api/db/orders?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: dbKey ? { "x-db-key": dbKey } : {},
+      }).catch(() => {});
     }
   };
 
@@ -776,7 +783,10 @@ export const Orders: React.FC = () => {
                 <span>⚡ أوردرات مستعجلة ({urgentOrders.length})</span>
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {urgentOrders.map(uo => (
+                {urgentOrders.map(uo => {
+                  const dName = uo.deadlineDate ? ARABIC_DAYS[new Date(uo.deadlineDate).getDay()] : '';
+                  const dLeft = uo.deadlineDate ? Math.ceil((new Date(uo.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
+                  return (
                   <div 
                     key={uo.id} 
                     onClick={() => setViewingOrder(uo)}
@@ -785,14 +795,15 @@ export const Orders: React.FC = () => {
                     <div>
                       <p className="font-extrabold text-slate-800 text-xs">{uo.customerName}</p>
                       <p className="font-mono text-[9.5px] text-slate-400 mt-1">
-                        {uo.id} • متبقي {uo.deliveryDuration === "urgent" ? "٣" : "٧"} أيام
+                        {uo.id} {dName ? `• قبل ${dName}` : ''} {dLeft > 0 ? `• متبقي ${dLeft} أيام` : ''}
                       </p>
                     </div>
                     <span className="text-[10px] font-bold text-red-600 flex items-center gap-0.5 animate-pulse">
                       معاينة ⚡
                     </span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -837,6 +848,8 @@ export const Orders: React.FC = () => {
                       const isDelivered = o.status === "delivered";
                       const isCancelled = o.status === "cancelled";
                       const statusMeta = STATUS_DETAILS[o.status] || { label: o.status, color: "bg-slate-100 text-slate-700 border-slate-200", icon: Clock };
+                      const deadlineDayName = o.deadlineDate ? ARABIC_DAYS[new Date(o.deadlineDate).getDay()] : '';
+                      const deadlineDaysLeft = o.deadlineDate ? Math.ceil((new Date(o.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
 
                       const rowClass = isDelivered 
                         ? "bg-emerald-50 hover:bg-emerald-100/40 border-r-emerald-500 text-slate-800" 
@@ -853,8 +866,9 @@ export const Orders: React.FC = () => {
                           {/* 1. Delivery priority / duration detail */}
                           <td className="p-4">
                             {isUrgent && !isCancelled ? (
-                              <span className="bg-red-50 text-red-600 px-2 py-1 rounded-lg text-[10px] font-black animate-pulse flex items-center gap-1 w-max">
-                                ⚡ مستعجل
+                              <span className="bg-red-50 text-red-600 px-2 py-1 rounded-lg text-[10px] font-black animate-pulse flex flex-col items-start leading-tight w-max">
+                                <span>⚡ مستعجل {deadlineDayName}</span>
+                                {deadlineDaysLeft > 0 && <span className="text-[9px] font-normal">متبقي {deadlineDaysLeft} أيام</span>}
                               </span>
                             ) : (
                               <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg text-[10px] font-black">
