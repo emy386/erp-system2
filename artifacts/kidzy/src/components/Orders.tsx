@@ -201,109 +201,85 @@ export const Orders: React.FC = () => {
     // 1. Normalize Arabic digits to Western
     const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
     const westernDigits = ['0','1','2','3','4','5','6','7','8','9'];
-    let cleanText = text;
+    let cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     arabicDigits.forEach((digit, i) => cleanText = cleanText.split(digit).join(westernDigits[i]));
 
-    const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const governorates = ['القاهرة','الجيزة','الإسكندرية','الدقهلية','الغربية','المنوفية','الشرقية','القليوبية','البحيرة','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','مطروح','شمال سيناء','جنوب سيناء','الوادي الجديد','البحر الأحمر'];
 
-    // Check if a line matches a known label
-    const isLabelLine = (line: string, label: string): boolean => {
-      const cleaned = line.replace(/[:\-=]/g, '').trim();
-      return cleaned === label || cleaned.startsWith(label);
-    };
+    // Extract value following a label in format "Label: Value" or "Label\nValue"
+    const KNOWN_ORDER = ['الاسم','رقم تليفون','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','الشحن','توتال السعر','مدة التوصيل'];
 
-    // Extract value: after colon/dash on same line, or from the next line
-    const getValue = (lineIdx: number): string => {
-      const line = lines[lineIdx];
-      // Check for colon separator
-      const colonIdx = line.indexOf(':');
-      if (colonIdx !== -1) {
-        return line.substring(colonIdx + 1).replace(/[:\-=]/g, '').trim();
-      }
-      // Check for dash separator
-      const dashIdx = line.indexOf('-');
-      if (dashIdx !== -1) {
-        return line.substring(dashIdx + 1).trim();
-      }
-      // Value is on the next line (make sure it's not another label)
-      if (lineIdx + 1 < lines.length) {
-        const knownLabels = ['الاسم','رقم تليفون','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','الشحن','توتال السعر','مدة التوصيل'];
-        const nextLine = lines[lineIdx + 1];
-        const isNextLabel = knownLabels.some(l => isLabelLine(nextLine, l));
-        if (!isNextLabel) {
-          return nextLine.replace(/[:\-=]/g, '').trim();
-        }
-      }
+    // Helper: find the label in text and capture what follows (until next label or end)
+    const labelVal = (label: string): string => {
+      const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const nextLabels = KNOWN_ORDER.filter(l => l !== label).map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      // Try colon format: "Label: Value"
+      const colonRe = new RegExp(`(?:^|\\n)\\s*${esc}\\s*[:=\\-]?\\s*([^\\n]+?)\\s*(?=\\n(?:${nextLabels})|\\n?$)`, 'mi');
+      const m = cleanText.match(colonRe);
+      if (m) return m[1].replace(/[:\-=]$/, '').trim();
       return '';
     };
 
-    // Scan lines and extract all fields
-    let customerName = '';
-    let customerPhone = '';
-    let governorate = '';
-    let address = '';
-    const itemNames: string[] = [];
-    const itemColors: string[] = [];
-    const itemSizes: string[] = [];
-    const itemChildNames: string[] = [];
-    let orderPrice = 0;
-    let shippingAmount = 0;
-    let totalPrice = 0;
-    let deliveryText = '';
+    // Extract header/footer fields
+    const customerName = labelVal('الاسم');
+    const customerPhone = labelVal('رقم تليفون') || cleanText.match(/01[0-9]{9}/)?.[0] || '';
+    const governorate = labelVal('المحافظة') || governorates.find(g => cleanText.includes(g)) || '';
+    const address = labelVal('العنوان');
+    const orderPrice = parseInt(labelVal('سعر الاوردر').replace(/[ج\.]/g, '')) || 0;
+    const shippingAmount = parseInt(labelVal('الشحن').replace(/[ج\.]/g, '')) || 0;
+    const totalPrice = parseInt(labelVal('توتال السعر').replace(/[ج\.]/g, '')) || 0;
+    const deliveryText = labelVal('مدة التوصيل');
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (isLabelLine(line, 'الاسم')) {
-        customerName = getValue(i);
-      } else if (isLabelLine(line, 'رقم تليفون')) {
-        customerPhone = getValue(i);
-      } else if (isLabelLine(line, 'المحافظة')) {
-        governorate = getValue(i);
-      } else if (isLabelLine(line, 'العنوان')) {
-        address = getValue(i);
-      } else if (isLabelLine(line, 'نوع المنتج')) {
-        itemNames.push(getValue(i));
-      } else if (isLabelLine(line, 'اللون')) {
-        itemColors.push(getValue(i));
-      } else if (isLabelLine(line, 'المقاس')) {
-        itemSizes.push(getValue(i));
-      } else if (isLabelLine(line, 'اسم الطفلة')) {
-        itemChildNames.push(getValue(i));
-      } else if (isLabelLine(line, 'سعر الاوردر')) {
-        orderPrice = parseInt(getValue(i)) || 0;
-      } else if (isLabelLine(line, 'الشحن')) {
-        shippingAmount = parseInt(getValue(i)) || 0;
-      } else if (isLabelLine(line, 'توتال السعر')) {
-        totalPrice = parseInt(getValue(i)) || 0;
-      } else if (isLabelLine(line, 'مدة التوصيل')) {
-        deliveryText = getValue(i);
+    // Extract item blocks (everything between the last "العنوان" value and "سعر الاوردر")
+    // Strategy: find all occurrences of the 4 item labels in order and group them
+    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'اسم الطفلة'];
+    // Collect all label:value pairs in the document
+    const allPairs: { label: string; value: string }[] = [];
+    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [] };
+
+    // Scan for item labels with their values
+    let searchFrom = 0;
+    while (searchFrom < cleanText.length) {
+      let found = false;
+      for (const lbl of itemLabels) {
+        const esc = lbl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(?:^|\\n)\\s*${esc}\\s*[:=\\-]?\\s*([^\\n]+?)\\s*(?=\\n|$)`, 'mi');
+        re.lastIndex = searchFrom;
+        const m = cleanText.substr(searchFrom).match(re);
+        if (m && m.index !== undefined && m.index + searchFrom >= searchFrom) {
+          const absoluteIdx = m.index + searchFrom;
+          if (absoluteIdx >= searchFrom) {
+            const val = m[1].replace(/[:\-=]$/, '').trim();
+            allValues[lbl].push(val);
+            searchFrom = absoluteIdx + m[0].length;
+            found = true;
+            break;
+          }
+        }
       }
+      if (!found) break;
     }
 
-    // Fallback phone extraction from regex if label didn't capture
-    if (!customerPhone) {
-      customerPhone = cleanText.match(/01[0-9]{9}/)?.[0] || '';
-    }
+    // Group the collected values into item blocks in order of capture
+    const itemNamesList = allValues['نوع المنتج'];
+    const itemColorsList = allValues['اللون'];
+    const itemSizesList = allValues['المقاس'];
+    const itemChildNamesList = allValues['اسم الطفلة'];
+    const itemCount = Math.max(itemNamesList.length, itemColorsList.length, itemSizesList.length, itemChildNamesList.length);
 
-    // Fallback governorate matching
-    if (!governorate) {
-      governorate = governorates.find(g => cleanText.includes(g)) || '';
-    }
-
-    // Build items array from the collected repeating blocks
-    const itemCount = Math.max(itemNames.length, itemColors.length, itemSizes.length, itemChildNames.length);
     const parsedItems: { name: string; quantity: number; price: number; color: string; size: string; childName: string }[] = [];
     if (itemCount > 0) {
-      const perItemPrice = itemCount > 1 && orderPrice > 0 ? Math.round(orderPrice / itemCount) : orderPrice;
+      const perItemPrice = orderPrice > 0 && itemCount > 0
+        ? Math.round(orderPrice / itemCount)
+        : 0;
       for (let idx = 0; idx < itemCount; idx++) {
         parsedItems.push({
-          name: itemNames[idx] || '',
+          name: itemNamesList[idx] || '',
           quantity: 1,
           price: perItemPrice,
-          color: itemColors[idx] || '',
-          size: itemSizes[idx] || '',
-          childName: itemChildNames[idx] || itemChildNames[0] || '',
+          color: itemColorsList[idx] || '',
+          size: itemSizesList[idx] || '',
+          childName: itemChildNamesList[idx] || itemChildNamesList[0] || '',
         });
       }
     }
@@ -313,7 +289,7 @@ export const Orders: React.FC = () => {
 
     return { 
       customerName, 
-      childName: itemChildNames[0] || '', 
+      childName: itemChildNamesList[0] || '', 
       customerPhone, 
       customerPhone2: '', 
       governorate, 
