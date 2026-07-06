@@ -164,26 +164,30 @@ export const Orders: React.FC = () => {
       const updated = [...prev.items];
       updated[idx] = { ...updated[idx], [field]: val };
 
-      // Auto load product defaults if product changed
+      // Reset dependent fields when product/color changes.
       if (field === "productId") {
         const prod = products.find(p => p.id === val);
         if (prod) {
           updated[idx].price = prod.sellingPrice;
-          updated[idx].variantId = prod.variants?.[0]?.id || "";
-          
-          const variant = prod.variants?.[0];
-          if (variant) {
-            updated[idx].color = variant.color || "";
-            updated[idx].size = variant.size || "";
-          }
         }
+        updated[idx].variantId = "";
+        updated[idx].color = "";
+        updated[idx].size = "";
       }
-      
-      // Auto load variant defaults if variant changed
-      if (field === "variantId") {
+      if (field === "color") {
+        updated[idx].variantId = "";
+        updated[idx].size = "";
+      }
+
+      // Match the exact variant once color + size are known.
+      if (field === "size" || field === "variantId") {
         const prod = products.find(p => p.id === updated[idx].productId);
-        const variant = prod?.variants?.find(v => v.id === val);
+        const variant = prod?.variants?.find(v => {
+          if (field === "variantId") return v.id === val;
+          return v.color === updated[idx].color && v.size === val;
+        });
         if (variant) {
+          updated[idx].variantId = variant.id;
           updated[idx].color = variant.color || "";
           updated[idx].size = variant.size || "";
         }
@@ -197,49 +201,43 @@ export const Orders: React.FC = () => {
     // 1. تنظيف وتحويل الأرقام العربية إلى إنجليزية
     const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
     const westernDigits = ['0','1','2','3','4','5','6','7','8','9'];
-    let normalizedText = text;
-    arabicDigits.forEach((digit, i) => {
-      normalizedText = normalizedText.split(digit).join(westernDigits[i]);
-    });
+    let cleanText = text;
+    arabicDigits.forEach((digit, i) => cleanText = cleanText.split(digit).join(westernDigits[i]));
 
-    const lines = normalizedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const governorates = ['القاهرة','الجيزة','الإسكندرية','الدقهلية','الغربية','المنوفية','الشرقية','القليوبية','البحيرة','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','مطروح','شمال سيناء','جنوب سيناء','الوادي الجديد','البحر الأحمر'];
 
-    // 2. استخراج الوسوم (Tags) بغض النظر عن الترتيب
-    const getVal = (patterns: RegExp[]) => {
-      for (const p of patterns) {
-        const match = normalizedText.match(p);
+    // وظيفة للبحث عن قيمة بعد كلمة مفتاحية
+    const findValue = (keywords: string[]) => {
+      for (const kw of keywords) {
+        const regex = new RegExp(`${kw}\\s*[:=]?\\s*([^\\n\\r]+)`, 'i');
+        const match = cleanText.match(regex);
         if (match) return match[1].trim();
       }
       return '';
     };
 
-    const customerPhone = normalizedText.match(/01[0-9]{9}/)?.[0] || '';
-    const customerPhone2 = normalizedText.match(/(?:تاني|ثاني)\s*[:=]?\s*(01[0-9]{9})/)?.[1] || '';
-    const governorate = governorates.find(g => normalizedText.includes(g)) || '';
-    const customerName = getVal([/(?:الاسم|العميل|لـ|ل)\s*[:=]?\s*([^\n,]+)/i, /^([^\n,0-9]{3,})/i]);
-    const address = getVal([/(?:العنوان|عنوان)\s*[:=]?\s*([^\n]+)/i]);
-    const childName = getVal([/(?:اسم البنوتة|اسم الطفل)[:=]?\s*([^\n,]+)/i]);
+    // استخراج الحقول الأساسية
+    const customerName = lines[0] || ''; // غالباً السطر الأول
+    const customerPhone = cleanText.match(/01[0-9]{9}/)?.[0] || '';
+    const address = findValue(['العنوان', 'عنوان']);
+    const governorate = governorates.find(g => cleanText.includes(g)) || '';
+    const childName = findValue(['اسم البنوتة', 'اسم الطفل', 'اسم الطفلة']);
     
-    // 3. تحليل مالي وشحن
-    const shippingPaid = /\b(?:تم دفع الشحن|شحن مدفوع|شحن خالص)\b/i.test(normalizedText);
-    const shippingAmount = parseInt(normalizedText.match(/(?:شحن)\s*[:=]?\s*(\d+)/i)?.[1] || '0');
-    const discount = parseInt(normalizedText.match(/(?:خصم)\s*[:=]?\s*(\d+)/i)?.[1] || '0');
-    const deliveryDuration = /\b(?:مستعجل|عاجل|ضروري)\b/i.test(normalizedText) ? 'urgent' as const : 'normal' as const;
+    // الشحن والدفع
+    const shippingPaid = /\b(?:تم دفع الشحن|شحن مدفوع)\b/i.test(cleanText);
+    const deliveryDuration = /\b(?:مستعجل|عاجل|ضروري)\b/i.test(cleanText) ? 'urgent' : 'normal';
 
-    // 4. استخراج المنتجات (بمرونة عالية)
-    const parsedItems: { name: string; quantity: number; price: number; color?: string; size?: string }[] = [];
+    // المنتجات (البحث في السطور التي تحتوي على أسعار أو أرقام)
+    const parsedItems: { name: string; quantity: number; price: number }[] = [];
     lines.forEach(line => {
-      // البحث عن أي سطر يحتوي على سعر أو أرقام
-      const priceMatch = line.match(/(\d+)(?:\s*(?:ج|جنيه|ج\.م))/i);
-      const qtyMatch = line.match(/(?:عدد|x|×)\s*(\d+)/i);
-      
+      // نبحث عن أي سعر مكتوب (مثلاً: 470ج أو 470 جنيه)
+      const priceMatch = line.match(/(\d+)\s*(?:ج|جنيه|ج\.م)/i);
       if (priceMatch) {
         const price = parseInt(priceMatch[1]);
-        const quantity = qtyMatch ? parseInt(qtyMatch[1]) : 1;
-        const name = line.replace(/(\d+)(?:\s*(?:ج|جنيه|ج\.م))/i, '').replace(/[:=،,-]/g, '').trim() || 'منتج';
+        const name = line.replace(/(\d+)\s*(?:ج|جنيه|ج\.م)/i, '').replace(/[:=،,-]/g, '').trim();
         if (name && price > 0) {
-            parsedItems.push({ name, quantity, price });
+          parsedItems.push({ name, quantity: 1, price });
         }
       }
     });
@@ -248,14 +246,14 @@ export const Orders: React.FC = () => {
       customerName, 
       childName, 
       customerPhone, 
-      customerPhone2, 
+      customerPhone2: '', 
       governorate, 
       address, 
-      discount, 
+      discount: 0, 
       deliveryDuration, 
       shippingPaid,
-      shippingAmount,
-      notes: normalizedText.match(/(?:ملاحظات)\s*[:=]?\s*([^\n]+)/i)?.[1]?.trim() || '', 
+      shippingAmount: 0,
+      notes: '', 
       parsedItems 
     };
   };
@@ -362,7 +360,9 @@ export const Orders: React.FC = () => {
     // Prepare items array
     const compiledItems: OrderItem[] = formState.items.map(basketItem => {
       const prod = products.find(p => p.id === basketItem.productId);
-      const variant = prod?.variants?.find(v => v.id === basketItem.variantId);
+      const variant = prod?.variants?.find(v => 
+        v.id === basketItem.variantId || (v.color === basketItem.color && v.size === basketItem.size)
+      );
       
       return {
         id: `it-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -370,7 +370,7 @@ export const Orders: React.FC = () => {
         productName: prod?.name || "موديل ممسوح",
         name: prod?.name || "موديل ممسوح",
         productCode: prod?.code || "N/A",
-        variantId: basketItem.variantId,
+        variantId: basketItem.variantId || variant?.id || "",
         color: basketItem.color || variant?.color || "N/A",
         size: basketItem.size || variant?.size || "N/A",
         quantity: basketItem.quantity,
@@ -1650,6 +1650,16 @@ export const Orders: React.FC = () => {
                   ) : (
                     formState.items.map((item, idx) => {
                       const sProd = products.find(p => p.id === item.productId);
+                      const selectedVariants = sProd?.variants || [];
+                      const availableColors = Array.from(
+                        new Set(selectedVariants.map(v => v.color).filter((color): color is string => Boolean(color)))
+                      );
+                      const availableSizes = Array.from(new Set(
+                        selectedVariants
+                          .filter(v => !item.color || v.color === item.color)
+                          .map(v => v.size)
+                          .filter((size): size is string => Boolean(size))
+                      ));
                       return (
                         <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-150/60 relative space-y-4 text-right shadow-sm group">
                           {/* Remove button at top-left corner */}
@@ -1662,7 +1672,7 @@ export const Orders: React.FC = () => {
                             ✕
                           </button>
 
-                          {/* Row 1: Model dropdown */}
+                          {/* Row 1: Product dropdown */}
                           <div className="space-y-1.5">
                             <label className="text-[11px] font-black text-slate-400 block font-sans">🔍 اختر المنتج من السيستم</label>
                             <select
@@ -1673,35 +1683,45 @@ export const Orders: React.FC = () => {
                             >
                               <option value="">-- اختر من المنتجات المسجلة --</option>
                               {products.map(p => (
-                                <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                                <option key={p.id} value={p.id}>{p.name}</option>
                               ))}
                             </select>
                           </div>
 
-                          {/* Row 2: Secondary Fields Color, Size, Qty, Price */}
+                          {/* Row 2: Color, Size, Qty, Price */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-                            {/* Color Input */}
+                            {/* Color Select */}
                             <div className="space-y-1 text-right">
                               <label className="text-[10px] font-black text-slate-400 block">اللون 🎨</label>
-                              <input
-                                type="text"
-                                placeholder="مثال: كحلي"
+                              <select
+                                required
                                 value={item.color || ""}
                                 onChange={e => handleFormItemChange(idx, "color", e.target.value)}
-                                className="w-full bg-slate-50 focus:bg-white border border-slate-100 focus:border-blue-500 rounded-xl p-3 text-xs sm:text-sm font-bold text-right outline-none transition-all"
-                              />
+                                disabled={!item.productId}
+                                className="w-full bg-slate-50 focus:bg-white border border-slate-100 focus:border-blue-500 rounded-xl p-3 text-xs sm:text-sm font-bold text-right outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <option value="">{item.productId ? "-- اختر اللون --" : "اختر المنتج أولاً"}</option>
+                                {availableColors.map(color => (
+                                  <option key={color} value={color}>{color}</option>
+                                ))}
+                              </select>
                             </div>
 
-                            {/* Size Input */}
+                            {/* Size Select */}
                             <div className="space-y-1 text-right">
                               <label className="text-[10px] font-black text-slate-400 block">المقاس 📐</label>
-                              <input
-                                type="text"
-                                placeholder="مثال: XL"
+                              <select
+                                required
                                 value={item.size || ""}
                                 onChange={e => handleFormItemChange(idx, "size", e.target.value)}
-                                className="w-full bg-slate-50 focus:bg-white border border-slate-100 focus:border-blue-500 rounded-xl p-3 text-xs sm:text-sm font-bold text-right outline-none transition-all"
-                              />
+                                disabled={!item.productId || !item.color}
+                                className="w-full bg-slate-50 focus:bg-white border border-slate-100 focus:border-blue-500 rounded-xl p-3 text-xs sm:text-sm font-bold text-right outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <option value="">{!item.productId ? "اختر المنتج أولاً" : !item.color ? "اختر اللون أولاً" : "-- اختر المقاس --"}</option>
+                                {availableSizes.map(size => (
+                                  <option key={size} value={size}>{size}</option>
+                                ))}
+                              </select>
                             </div>
 
                             {/* Quantity Input */}
