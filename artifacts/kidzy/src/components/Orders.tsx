@@ -196,9 +196,9 @@ export const Orders: React.FC = () => {
     });
   };
 
-  // Parse order text locally — no AI, no API, pure regex
+  // Parse order text using the exact moderator template format
   const parseOrderText = (text: string) => {
-    // 1. تنظيف وتحويل الأرقام العربية إلى إنجليزية
+    // 1. Normalize Arabic digits to Western
     const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
     const westernDigits = ['0','1','2','3','4','5','6','7','8','9'];
     let cleanText = text;
@@ -207,44 +207,113 @@ export const Orders: React.FC = () => {
     const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const governorates = ['القاهرة','الجيزة','الإسكندرية','الدقهلية','الغربية','المنوفية','الشرقية','القليوبية','البحيرة','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','مطروح','شمال سيناء','جنوب سيناء','الوادي الجديد','البحر الأحمر'];
 
-    // وظيفة للبحث عن قيمة بعد كلمة مفتاحية
-    const findValue = (keywords: string[]) => {
-      for (const kw of keywords) {
-        const regex = new RegExp(`${kw}\\s*[:=]?\\s*([^\\n\\r]+)`, 'i');
-        const match = cleanText.match(regex);
-        if (match) return match[1].trim();
+    // Check if a line matches a known label
+    const isLabelLine = (line: string, label: string): boolean => {
+      const cleaned = line.replace(/[:\-=]/g, '').trim();
+      return cleaned === label || cleaned.startsWith(label);
+    };
+
+    // Extract value: after colon/dash on same line, or from the next line
+    const getValue = (lineIdx: number): string => {
+      const line = lines[lineIdx];
+      // Check for colon separator
+      const colonIdx = line.indexOf(':');
+      if (colonIdx !== -1) {
+        return line.substring(colonIdx + 1).replace(/[:\-=]/g, '').trim();
+      }
+      // Check for dash separator
+      const dashIdx = line.indexOf('-');
+      if (dashIdx !== -1) {
+        return line.substring(dashIdx + 1).trim();
+      }
+      // Value is on the next line (make sure it's not another label)
+      if (lineIdx + 1 < lines.length) {
+        const knownLabels = ['الاسم','رقم تليفون','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','الشحن','توتال السعر','مدة التوصيل'];
+        const nextLine = lines[lineIdx + 1];
+        const isNextLabel = knownLabels.some(l => isLabelLine(nextLine, l));
+        if (!isNextLabel) {
+          return nextLine.replace(/[:\-=]/g, '').trim();
+        }
       }
       return '';
     };
 
-    // استخراج الحقول الأساسية
-    const customerName = lines[0] || ''; // غالباً السطر الأول
-    const customerPhone = cleanText.match(/01[0-9]{9}/)?.[0] || '';
-    const address = findValue(['العنوان', 'عنوان']);
-    const governorate = governorates.find(g => cleanText.includes(g)) || '';
-    const childName = findValue(['اسم البنوتة', 'اسم الطفل', 'اسم الطفلة']);
-    
-    // الشحن والدفع
-    const shippingPaid = /\b(?:تم دفع الشحن|شحن مدفوع)\b/i.test(cleanText);
-    const deliveryDuration = /\b(?:مستعجل|عاجل|ضروري)\b/i.test(cleanText) ? 'urgent' : 'normal';
+    // Scan lines and extract all fields
+    let customerName = '';
+    let customerPhone = '';
+    let governorate = '';
+    let address = '';
+    const itemNames: string[] = [];
+    const itemColors: string[] = [];
+    const itemSizes: string[] = [];
+    const itemChildNames: string[] = [];
+    let orderPrice = 0;
+    let shippingAmount = 0;
+    let totalPrice = 0;
+    let deliveryText = '';
 
-    // المنتجات (البحث في السطور التي تحتوي على أسعار أو أرقام)
-    const parsedItems: { name: string; quantity: number; price: number }[] = [];
-    lines.forEach(line => {
-      // نبحث عن أي سعر مكتوب (مثلاً: 470ج أو 470 جنيه)
-      const priceMatch = line.match(/(\d+)\s*(?:ج|جنيه|ج\.م)/i);
-      if (priceMatch) {
-        const price = parseInt(priceMatch[1]);
-        const name = line.replace(/(\d+)\s*(?:ج|جنيه|ج\.م)/i, '').replace(/[:=،,-]/g, '').trim();
-        if (name && price > 0) {
-          parsedItems.push({ name, quantity: 1, price });
-        }
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (isLabelLine(line, 'الاسم')) {
+        customerName = getValue(i);
+      } else if (isLabelLine(line, 'رقم تليفون')) {
+        customerPhone = getValue(i);
+      } else if (isLabelLine(line, 'المحافظة')) {
+        governorate = getValue(i);
+      } else if (isLabelLine(line, 'العنوان')) {
+        address = getValue(i);
+      } else if (isLabelLine(line, 'نوع المنتج')) {
+        itemNames.push(getValue(i));
+      } else if (isLabelLine(line, 'اللون')) {
+        itemColors.push(getValue(i));
+      } else if (isLabelLine(line, 'المقاس')) {
+        itemSizes.push(getValue(i));
+      } else if (isLabelLine(line, 'اسم الطفلة')) {
+        itemChildNames.push(getValue(i));
+      } else if (isLabelLine(line, 'سعر الاوردر')) {
+        orderPrice = parseInt(getValue(i)) || 0;
+      } else if (isLabelLine(line, 'الشحن')) {
+        shippingAmount = parseInt(getValue(i)) || 0;
+      } else if (isLabelLine(line, 'توتال السعر')) {
+        totalPrice = parseInt(getValue(i)) || 0;
+      } else if (isLabelLine(line, 'مدة التوصيل')) {
+        deliveryText = getValue(i);
       }
-    });
+    }
+
+    // Fallback phone extraction from regex if label didn't capture
+    if (!customerPhone) {
+      customerPhone = cleanText.match(/01[0-9]{9}/)?.[0] || '';
+    }
+
+    // Fallback governorate matching
+    if (!governorate) {
+      governorate = governorates.find(g => cleanText.includes(g)) || '';
+    }
+
+    // Build items array from the collected repeating blocks
+    const itemCount = Math.max(itemNames.length, itemColors.length, itemSizes.length, itemChildNames.length);
+    const parsedItems: { name: string; quantity: number; price: number; color: string; size: string; childName: string }[] = [];
+    if (itemCount > 0) {
+      const perItemPrice = itemCount > 1 && orderPrice > 0 ? Math.round(orderPrice / itemCount) : orderPrice;
+      for (let idx = 0; idx < itemCount; idx++) {
+        parsedItems.push({
+          name: itemNames[idx] || '',
+          quantity: 1,
+          price: perItemPrice,
+          color: itemColors[idx] || '',
+          size: itemSizes[idx] || '',
+          childName: itemChildNames[idx] || itemChildNames[0] || '',
+        });
+      }
+    }
+
+    const deliveryDuration = /\b(?:مستعجل|عاجل|ضروري)\b/i.test(deliveryText) ? 'urgent' : 'normal';
+    const shippingPaid = /\b(?:مدفوع|مدفوع سلفا|تم الدفع)\b/i.test(deliveryText) || /\b(?:مدفوع|مدفوع سلفا|تم الدفع)\b/i.test(cleanText);
 
     return { 
       customerName, 
-      childName, 
+      childName: itemChildNames[0] || '', 
       customerPhone, 
       customerPhone2: '', 
       governorate, 
@@ -252,9 +321,10 @@ export const Orders: React.FC = () => {
       discount: 0, 
       deliveryDuration, 
       shippingPaid,
-      shippingAmount: 0,
+      shippingAmount,
       notes: '', 
-      parsedItems 
+      parsedItems,
+      totalPrice,
     };
   };
 
@@ -269,15 +339,19 @@ export const Orders: React.FC = () => {
         p.name.toLowerCase().includes(extItem.name.toLowerCase()) ||
         extItem.name.toLowerCase().includes(p.name.toLowerCase())
       );
+      const matchedVariant = matchedProd?.variants?.find(v =>
+        v.color === extItem.color && v.size === extItem.size
+      ) || matchedProd?.variants?.[0];
       return {
         productId: matchedProd?.id || "",
         name: matchedProd?.name || extItem.name,
         productName: matchedProd?.name || extItem.name,
-        variantId: matchedProd?.variants?.[0]?.id || "",
+        variantId: matchedVariant?.id || "",
         quantity: extItem.quantity || 1,
         price: extItem.price || matchedProd?.sellingPrice || 0,
-        color: extItem.color || "",
-        size: extItem.size || "",
+        color: matchedVariant?.color || extItem.color || "",
+        size: matchedVariant?.size || extItem.size || "",
+        childName: extItem.childName || "",
         productionStatus: "not_started" as const,
       };
     });
