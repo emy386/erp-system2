@@ -284,8 +284,13 @@ export const Orders: React.FC = () => {
       }
     }
 
-    const deliveryDuration = /\b(?:مستعجل|عاجل|ضروري)\b/i.test(deliveryText) ? 'urgent' : 'normal';
-    const shippingPaid = /\b(?:مدفوع|مدفوع سلفا|تم الدفع)\b/i.test(deliveryText) || /\b(?:مدفوع|مدفوع سلفا|تم الدفع)\b/i.test(cleanText);
+    const hasWord = (txt: string, word: string) => {
+      const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`(?:^|\\s)${esc}(?=\\s|$)`, 'i').test(txt);
+    };
+    const deliveryDuration = hasWord(deliveryText, 'مستعجل') || hasWord(deliveryText, 'عاجل') || hasWord(deliveryText, 'ضروري') ? 'urgent' : 'normal';
+    const shippingPaid = hasWord(deliveryText, 'مدفوع') || hasWord(deliveryText, 'تم الدفع') || hasWord(deliveryText, 'تم دفع')
+      || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
 
     return { 
       customerName, 
