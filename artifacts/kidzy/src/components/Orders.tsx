@@ -348,6 +348,7 @@ export const Orders: React.FC = () => {
     }));
 
     setModalType("manual");
+    setAiInputText("");
   };
 
 
@@ -604,6 +605,7 @@ export const Orders: React.FC = () => {
                 setEditingOrder(null);
                 setModalType("smart");
                 setIsFormOpen(true);
+                setAiInputText("");
               }}
               className="px-4 py-2.5 bg-[#ecfdf5] hover:bg-emerald-100 text-[#047857] hover:text-emerald-800 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-100/50"
             >
@@ -1432,7 +1434,7 @@ export const Orders: React.FC = () => {
               {/* Header */}
               <div className="p-8 pb-4 flex justify-between items-start gap-4">
                 <button 
-                  onClick={() => { setIsFormOpen(false); setEditingOrder(null); }}
+                  onClick={() => { setIsFormOpen(false); setEditingOrder(null); setAiInputText(""); }}
                   className="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center bg-slate-50 text-slate-400 font-bold transition-all"
                 >
                   ✕
@@ -1514,7 +1516,7 @@ export const Orders: React.FC = () => {
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => { setIsFormOpen(false); setEditingOrder(null); }}
+                  onClick={() => { setIsFormOpen(false); setEditingOrder(null); setAiInputText(""); }}
                   className="w-1/3 bg-white hover:bg-slate-100 hover:text-slate-800 text-slate-500 font-black py-3.5 rounded-2xl border border-slate-200 transition-all cursor-pointer text-xs"
                 >
                   إلغاء
