@@ -57,6 +57,7 @@ export const Orders: React.FC = () => {
     source: string;
     notes: string;
     screenshot?: string;
+    deadlineDate?: string;
   }>({
     customerName: "",
     childName: "",
@@ -71,7 +72,8 @@ export const Orders: React.FC = () => {
     deliveryDuration: "normal",
     source: "فيسبوك",
     notes: "",
-    screenshot: undefined
+    screenshot: undefined,
+    deadlineDate: undefined,
   });
 
   // AI OCR Panel text state
@@ -205,6 +207,13 @@ export const Orders: React.FC = () => {
     arabicDigits.forEach((digit, i) => cleanText = cleanText.split(digit).join(westernDigits[i]));
 
     const governorates = ['القاهرة','الجيزة','الإسكندرية','الدقهلية','الغربية','المنوفية','الشرقية','القليوبية','البحيرة','كفر الشيخ','دمياط','بورسعيد','الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان','مطروح','شمال سيناء','جنوب سيناء','الوادي الجديد','البحر الأحمر'];
+    const govAlias: Record<string, string> = {
+      'اسكندريه': 'الإسكندرية',
+      'الاسكندرية': 'الإسكندرية',
+      'الاسكندريه': 'الإسكندرية',
+      'القاهره': 'القاهرة',
+      'الجيزه': 'الجيزة',
+    };
 
     // Extract value following a label in format "Label: Value" or "Label\nValue"
     const KNOWN_ORDER = ['الاسم','رقم تليفون','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','الشحن','توتال السعر','مدة التوصيل'];
@@ -223,10 +232,14 @@ export const Orders: React.FC = () => {
     // Extract header/footer fields
     const customerName = labelVal('الاسم');
     const customerPhone = labelVal('رقم تليفون') || cleanText.match(/01[0-9]{9}/)?.[0] || '';
-    const governorate = labelVal('المحافظة') || governorates.find(g => cleanText.includes(g)) || '';
+    const governorateRaw = labelVal('المحافظة') || governorates.find(g => cleanText.includes(g)) || '';
+    const governorate = govAlias[governorateRaw] || governorates.find(g => g.includes(governorateRaw.replace(/^ال/, ''))) || governorateRaw;
     const address = labelVal('العنوان');
     const orderPrice = parseInt(labelVal('سعر الاوردر').replace(/[ج\.]/g, '')) || 0;
-    const shippingAmount = parseInt(labelVal('الشحن').replace(/[ج\.]/g, '')) || 0;
+    const shippingText = labelVal('الشحن');
+    const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
+    const shippingPaid = hasWord(shippingText, 'مدفوع') || hasWord(shippingText, 'تم الدفع') || hasWord(shippingText, 'تم دفع') || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
+    const shippingAmount = shippingPaid ? 0 : (parseInt(shippingText.replace(/[ج\.]/g, '')) || 0);
     const totalPrice = parseInt(labelVal('توتال السعر').replace(/[ج\.]/g, '')) || 0;
     const deliveryText = labelVal('مدة التوصيل');
 
@@ -284,13 +297,36 @@ export const Orders: React.FC = () => {
       }
     }
 
-    const hasWord = (txt: string, word: string) => {
-      const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return new RegExp(`(?:^|\\s)${esc}(?=\\s|$)`, 'i').test(txt);
-    };
     const deliveryDuration = hasWord(deliveryText, 'مستعجل') || hasWord(deliveryText, 'عاجل') || hasWord(deliveryText, 'ضروري') ? 'urgent' : 'normal';
-    const shippingPaid = hasWord(deliveryText, 'مدفوع') || hasWord(deliveryText, 'تم الدفع') || hasWord(deliveryText, 'تم دفع')
-      || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
+
+    // Extract deadline day name from delivery text (e.g. "مستعجل قبل الجمعة")
+    const dayNames: Record<string, number> = {
+      'الأحد': 0, 'الاحد': 0,
+      'الإثنين': 1, 'الاثنين': 1, 'الاتنين': 1,
+      'الثلاثاء': 2,
+      'الأربعاء': 3, 'الاربعاء': 3,
+      'الخميس': 4,
+      'الجمعة': 5,
+      'السبت': 6,
+    };
+    let deadlineDate = '';
+    if (deliveryDuration === 'urgent') {
+      const dayMatch = deliveryText.match(/قبل\s+(يوم\s+)?(\S+)/i);
+      if (dayMatch) {
+        const dayName = dayMatch[2];
+        const targetDay = Object.entries(dayNames).find(([k]) => k === dayName || dayName.includes(k.replace(/^الإ/, 'ال')) || k.includes(dayName));
+        if (targetDay) {
+          const now = new Date();
+          const currentDay = now.getDay();
+          let daysUntil = targetDay[1] - currentDay;
+          if (daysUntil <= 0) daysUntil += 7;
+          const deadline = new Date(now);
+          deadline.setDate(deadline.getDate() + daysUntil);
+          deadline.setHours(23, 59, 0, 0);
+          deadlineDate = deadline.toISOString();
+        }
+      }
+    }
 
     return { 
       customerName, 
@@ -306,6 +342,7 @@ export const Orders: React.FC = () => {
       notes: '', 
       parsedItems,
       totalPrice,
+      deadlineDate,
     };
   };
 
@@ -347,9 +384,10 @@ export const Orders: React.FC = () => {
       discount: parsed.discount || prev.discount || 0,
       deliveryDuration: parsed.deliveryDuration || prev.deliveryDuration,
       shippingPaid: parsed.shippingPaid !== undefined ? parsed.shippingPaid : prev.shippingPaid,
-      shippingAmount: parsed.shippingAmount || prev.shippingAmount,
+      shippingAmount: parsed.shippingPaid ? 0 : (parsed.shippingAmount ?? prev.shippingAmount),
       notes: parsed.notes || prev.notes,
       items: transformedItems.length > 0 ? transformedItems : prev.items,
+      deadlineDate: parsed.deadlineDate || prev.deadlineDate,
     }));
 
     setModalType("manual");
@@ -466,7 +504,7 @@ export const Orders: React.FC = () => {
       creationDate: editingOrder ? editingOrder.creationDate : new Date().toISOString(),
       deadlineDate: editingOrder 
         ? editingOrder.deadlineDate 
-        : new Date(Date.now() + 864e5 * (formState.deliveryDuration === "urgent" ? 2 : 5)).toISOString(),
+        : formState.deadlineDate || new Date(Date.now() + 864e5 * (formState.deliveryDuration === "urgent" ? 2 : 5)).toISOString(),
       lastUpdateDate: new Date().toISOString()
     };
 
@@ -493,7 +531,8 @@ export const Orders: React.FC = () => {
       deliveryDuration: "normal",
       source: "فيسبوك",
       notes: "",
-      screenshot: undefined
+      screenshot: undefined,
+      deadlineDate: undefined,
     });
   };
 
@@ -526,7 +565,8 @@ export const Orders: React.FC = () => {
       deliveryDuration: ord.deliveryDuration,
       source: ord.source,
       notes: ord.notes || "",
-      screenshot: ord.screenshot
+      screenshot: ord.screenshot,
+      deadlineDate: ord.deadlineDate,
     });
 
     setIsFormOpen(true);
