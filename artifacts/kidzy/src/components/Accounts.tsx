@@ -139,6 +139,12 @@ export function Accounts() {
       return sum + Math.max(0, e.amount - paid);
     }, 0);
 
+    // Worker & staff payments this month
+    const monthWorkerPayments = (workers || []).reduce((sum, w) =>
+      sum + (w.payments || []).filter(p => isInMonth(p.date)).reduce((s, p) => s + (p.amount || 0), 0), 0);
+    const monthStaffExtra = 0;
+    const monthStaffFixed = 0;
+
     return {
       totalIn,
       totalOut,
