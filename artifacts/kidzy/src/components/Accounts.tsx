@@ -9,7 +9,7 @@ import {
 import { GeneralExpense, Order, OrderItem } from '../types';
 
 export function Accounts() {
-  const { users, workers, orders, generalExpenses, setGeneralExpenses, products } = useApp();
+  const { users, workers, orders, productionIntakes, generalExpenses, setGeneralExpenses, products } = useApp();
   
   // States
   const [activeTab, setActiveTab] = useState<'expenses' | 'workshop'>('expenses');
