@@ -249,27 +249,24 @@ export const Orders: React.FC = () => {
     // Collect all label:value pairs in the document
     const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [], 'سعر الاوردر': [] };
 
-    // Scan for item labels with their values
+    // Scan for item labels — pick the nearest match regardless of label order
     let searchFrom = 0;
     while (searchFrom < cleanText.length) {
-      let found = false;
+      let best: { lbl: string; idx: number; len: number; val: string } | null = null;
       for (const lbl of itemLabels) {
         const esc = lbl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const re = new RegExp(`(?:^|\\n)\\s*${esc}\\s*[:=\\-]?\\s*([^\\n]+?)\\s*(?=\\n|$)`, 'mi');
-        re.lastIndex = searchFrom;
         const m = cleanText.substr(searchFrom).match(re);
-        if (m && m.index !== undefined && m.index + searchFrom >= searchFrom) {
-          const absoluteIdx = m.index + searchFrom;
-          if (absoluteIdx >= searchFrom) {
-            const val = m[1].replace(/[:\-=]$/, '').trim();
-            allValues[lbl].push(val);
-            searchFrom = absoluteIdx + m[0].length;
-            found = true;
-            break;
+        if (m && m.index !== undefined) {
+          const absIdx = m.index + searchFrom;
+          if (!best || absIdx < best.idx) {
+            best = { lbl, idx: absIdx, len: m[0].length, val: m[1].replace(/[:\-=]$/, '').trim() };
           }
         }
       }
-      if (!found) break;
+      if (!best) break;
+      allValues[best.lbl].push(best.val);
+      searchFrom = best.idx + best.len;
     }
 
     // Group the collected values into item blocks in order of capture
