@@ -237,7 +237,6 @@ export const Orders: React.FC = () => {
     const governorateRaw = labelVal('المحافظة') || governorates.find(g => cleanText.includes(g)) || '';
     const governorate = govAlias[governorateRaw] || governorates.find(g => g.includes(governorateRaw.replace(/^ال/, ''))) || governorateRaw;
     const address = labelVal('العنوان');
-    const orderPrice = parseInt(labelVal('سعر الاوردر').replace(/[ج\.]/g, '')) || 0;
     const shippingText = labelVal('الشحن');
     const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
     const shippingPaid = hasWord(shippingText, 'مدفوع') || hasWord(shippingText, 'تم الدفع') || hasWord(shippingText, 'تم دفع') || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
@@ -245,12 +244,10 @@ export const Orders: React.FC = () => {
     const totalPrice = parseInt(labelVal('توتال السعر').replace(/[ج\.]/g, '')) || 0;
     const deliveryText = labelVal('مدة التوصيل');
 
-    // Extract item blocks (everything between the last "العنوان" value and "سعر الاوردر")
-    // Strategy: find all occurrences of the 4 item labels in order and group them
-    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'اسم الطفلة'];
+    // Extract item blocks: collect every label:value pair in item sequences
+    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'اسم الطفلة', 'سعر الاوردر'];
     // Collect all label:value pairs in the document
-    const allPairs: { label: string; value: string }[] = [];
-    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [] };
+    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [], 'سعر الاوردر': [] };
 
     // Scan for item labels with their values
     let searchFrom = 0;
@@ -280,21 +277,19 @@ export const Orders: React.FC = () => {
     const itemColorsList = allValues['اللون'];
     const itemSizesList = allValues['المقاس'];
     const itemChildNamesList = allValues['اسم الطفلة'];
+    const itemPricesList = allValues['سعر الاوردر'];
     const itemCount = Math.max(itemNamesList.length, itemColorsList.length, itemSizesList.length, itemChildNamesList.length);
 
     const parsedItems: { name: string; quantity: number; price: number; color: string; size: string; childName: string }[] = [];
     if (itemCount > 0) {
-      const perItemPrice = orderPrice > 0 && itemCount > 0
-        ? Math.round(orderPrice / itemCount)
-        : 0;
       for (let idx = 0; idx < itemCount; idx++) {
         parsedItems.push({
           name: itemNamesList[idx] || '',
           quantity: 1,
-          price: perItemPrice,
+          price: parseInt((itemPricesList[idx] || '0').replace(/[ج\.]/g, '')) || 0,
           color: itemColorsList[idx] || '',
           size: itemSizesList[idx] || '',
-          childName: itemChildNamesList[idx] || itemChildNamesList[0] || '',
+          childName: itemChildNamesList[idx] || '',
         });
       }
     }
