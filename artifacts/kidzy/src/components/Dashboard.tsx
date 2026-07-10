@@ -586,7 +586,7 @@ export function Dashboard() {
                 <X size={20} />
               </button>
               <h3 className="text-base sm:text-lg font-black text-slate-850 flex items-center gap-2 select-none">
-                <span>تفاصيل الأوردر الملي والتشغيلي</span>
+                <span>تفاصيل الأوردر</span>
                 <span className="font-mono text-blue-600 font-black">{selectedOrder.id}</span>
               </h3>
             </div>
