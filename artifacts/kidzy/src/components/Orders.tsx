@@ -1495,7 +1495,7 @@ export const Orders: React.FC = () => {
                       <img 
                         src={currentRef.screenshot} 
                         alt="Screenshot preview"
-                        className="block border border-slate-150 rounded-2xl overflow-hidden hover:opacity-95 max-h-[160px] shadow-sm bg-slate-50 w-full object-cover cursor-pointer"
+                        className="block border border-slate-150 rounded-2xl overflow-hidden hover:opacity-95 shadow-sm bg-slate-50 w-full object-contain cursor-pointer"
                         referrerPolicy="no-referrer"
                       />
                     </a>

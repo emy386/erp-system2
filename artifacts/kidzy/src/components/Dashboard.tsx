@@ -685,7 +685,7 @@ export function Dashboard() {
                 <img
                   src={selectedOrder.screenshot}
                   alt="Screenshot preview"
-                  className="border border-slate-150 rounded-2xl overflow-hidden max-h-[160px] w-full object-cover shadow-sm bg-slate-50 cursor-pointer"
+                  className="border border-slate-150 rounded-2xl overflow-hidden w-full object-contain shadow-sm bg-slate-50 cursor-pointer"
                   referrerPolicy="no-referrer"
                   onClick={() => window.open(selectedOrder.screenshot!, '_blank')}
                 />
