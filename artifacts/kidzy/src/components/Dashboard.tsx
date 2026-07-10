@@ -574,7 +574,7 @@ export function Dashboard() {
       {/* Details Modal popup */}
       {isOrderModalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[3px] z-[999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl p-6 text-right space-y-6">
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-4 sm:p-6 text-right space-y-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-50 pb-4">
               <button 
                 onClick={() => {
