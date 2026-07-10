@@ -218,7 +218,7 @@ export const Orders: React.FC = () => {
     };
 
     // Extract value following a label in format "Label: Value" or "Label\nValue"
-    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','ملاحظات','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','توتال السعر','مدة التوصيل'];
+    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','توتال السعر','مدة التوصيل'];
 
     // Helper: find the label in text and capture what follows (until next label or end)
     const labelVal = (label: string): string => {
@@ -238,7 +238,6 @@ export const Orders: React.FC = () => {
     const governorateRaw = labelVal('المحافظة') || governorates.find(g => cleanText.includes(g)) || '';
     const governorate = govAlias[governorateRaw] || governorates.find(g => g.includes(governorateRaw.replace(/^ال/, ''))) || governorateRaw;
     const address = labelVal('العنوان');
-    const notes = labelVal('ملاحظات');
     const discount = parseInt(labelVal('خصم').replace(/[ج\.]/g, '')) || 0;
     const shippingText = labelVal('الشحن');
     const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
@@ -248,9 +247,9 @@ export const Orders: React.FC = () => {
     const deliveryText = labelVal('مدة التوصيل');
 
     // Extract item blocks: collect every label:value pair in item sequences
-    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'اسم الطفلة', 'سعر الاوردر', 'سعر القطعة'];
+    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'ملاحظات', 'اسم الطفلة', 'سعر الاوردر', 'سعر القطعة'];
     // Collect all label:value pairs in the document
-    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [], 'سعر الاوردر': [], 'سعر القطعة': [] };
+    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'ملاحظات': [], 'اسم الطفلة': [], 'سعر الاوردر': [], 'سعر القطعة': [] };
 
     // Scan for item labels — pick the nearest match regardless of label order
     let searchFrom = 0;
@@ -279,9 +278,10 @@ export const Orders: React.FC = () => {
     const itemSizesList = allValues['المقاس'];
     const itemChildNamesList = allValues['اسم الطفلة'];
     const itemPricesList = allValues['سعر الاوردر'];
+    const itemNotesList = allValues['ملاحظات'];
     const itemCount = Math.max(itemNamesList.length, itemColorsList.length, itemSizesList.length, itemChildNamesList.length);
 
-    const parsedItems: { name: string; quantity: number; price: number; color: string; size: string; childName: string }[] = [];
+    const parsedItems: { name: string; quantity: number; price: number; color: string; size: string; childName: string; notes: string }[] = [];
     if (itemCount > 0) {
       for (let idx = 0; idx < itemCount; idx++) {
         parsedItems.push({
@@ -291,6 +291,7 @@ export const Orders: React.FC = () => {
           color: itemColorsList[idx] || '',
           size: itemSizesList[idx] || '',
           childName: itemChildNamesList[idx] || '',
+          notes: itemNotesList[idx] || '',
         });
       }
     }
@@ -330,14 +331,14 @@ export const Orders: React.FC = () => {
       customerName, 
       childName: itemChildNamesList[0] || '', 
       customerPhone, 
-      customerPhone2: '', 
+      customerPhone2,
       governorate, 
       address, 
       discount,
       deliveryDuration, 
       shippingPaid,
       shippingAmount,
-      notes,
+      notes: '',
       parsedItems,
       totalPrice,
       deadlineDate,
@@ -368,6 +369,7 @@ export const Orders: React.FC = () => {
         color: matchedVariant?.color || extItem.color || "",
         size: matchedVariant?.size || extItem.size || "",
         childName: extItem.childName || "",
+        notes: extItem.notes || "",
         productionStatus: "not_started" as const,
       };
     });
