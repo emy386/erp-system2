@@ -859,7 +859,7 @@ export const Orders: React.FC = () => {
                           <td className="p-4">
                             {isUrgent && !isCancelled ? (
                               <span className="bg-red-50 text-red-600 px-2 py-1 rounded-lg text-[10px] font-black animate-pulse flex flex-col items-start leading-tight w-max">
-                                <span>⚡ مستعجل {deadlineDayName}</span>
+                                <span>⚡ مستعجل {deadlineDayName ? `قبل ${deadlineDayName}` : ''}</span>
                                 {deadlineDaysLeft > 0 && <span className="text-[9px] font-normal">متبقي {deadlineDaysLeft} أيام</span>}
                               </span>
                             ) : (
