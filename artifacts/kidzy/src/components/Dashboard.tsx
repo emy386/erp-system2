@@ -677,6 +677,20 @@ export function Dashboard() {
                 📝 ملاحظات إدارية: {selectedOrder.notes}
               </div>
             ) : null}
+
+            {/* Screenshot */}
+            {selectedOrder.screenshot ? (
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[9px] font-black text-slate-400 block uppercase text-right">لقطة شاشة المحادثة المرفقة (Screenshot):</span>
+                <img
+                  src={selectedOrder.screenshot}
+                  alt="Screenshot preview"
+                  className="border border-slate-150 rounded-2xl overflow-hidden max-h-[160px] w-full object-cover shadow-sm bg-slate-50 cursor-pointer"
+                  referrerPolicy="no-referrer"
+                  onClick={() => window.open(selectedOrder.screenshot!, '_blank')}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       )}
