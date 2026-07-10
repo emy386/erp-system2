@@ -68,6 +68,7 @@ export interface Order {
   creationDate: string;
   deadlineDate: string;
   deadlineLabel?: string;
+  collectionTotal?: number;
   lastUpdateDate: string;
   items: OrderItem[];
   payments?: {

@@ -61,6 +61,7 @@ export const Orders: React.FC = () => {
     screenshot?: string;
     deadlineDate?: string;
     deadlineLabel?: string;
+    collectionTotal: number;
   }>({
     customerName: "",
     childName: "",
@@ -77,6 +78,7 @@ export const Orders: React.FC = () => {
     notes: "",
     screenshot: undefined,
     deadlineDate: undefined,
+    collectionTotal: 0,
   });
 
   // AI OCR Panel text state
@@ -220,7 +222,7 @@ export const Orders: React.FC = () => {
     };
 
     // Extract value following a label in format "Label: Value" or "Label\nValue"
-    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','توتال السعر','مدة التوصيل'];
+    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','جملة التحصيل','توتال السعر','مدة التوصيل'];
 
     // Helper: find the label in text and capture what follows (until next label or end)
     const labelVal = (label: string): string => {
@@ -245,6 +247,7 @@ export const Orders: React.FC = () => {
     const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
     const shippingPaid = hasWord(shippingText, 'مدفوع') || hasWord(shippingText, 'تم الدفع') || hasWord(shippingText, 'تم دفع') || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
     const shippingAmount = shippingPaid ? 0 : (parseInt(shippingText.replace(/[ج\.]/g, '')) || 0);
+    const collectionTotal = parseInt(labelVal('جملة التحصيل').replace(/[ج\.]/g, '')) || 0;
     const totalPrice = parseInt(labelVal('توتال السعر').replace(/[ج\.]/g, '')) || 0;
     const deliveryText = labelVal('مدة التوصيل');
 
@@ -357,6 +360,7 @@ export const Orders: React.FC = () => {
       deliveryDuration, 
       shippingPaid,
       shippingAmount,
+      collectionTotal,
       notes: '',
       parsedItems,
       totalPrice,
@@ -405,6 +409,7 @@ export const Orders: React.FC = () => {
       deliveryDuration: parsed.deliveryDuration || prev.deliveryDuration,
       shippingPaid: parsed.shippingPaid !== undefined ? parsed.shippingPaid : prev.shippingPaid,
       shippingAmount: parsed.shippingPaid ? 0 : (parsed.shippingAmount ?? prev.shippingAmount),
+      collectionTotal: parsed.collectionTotal || prev.collectionTotal || 0,
       notes: parsed.notes || prev.notes,
       items: transformedItems.length > 0 ? transformedItems : prev.items,
       deadlineDate: parsed.deadlineDate || prev.deadlineDate,
@@ -527,6 +532,7 @@ export const Orders: React.FC = () => {
         ? editingOrder.deadlineDate 
         : formState.deadlineDate || new Date(Date.now() + 864e5 * (formState.deliveryDuration === "urgent" ? 2 : 5)).toISOString(),
       deadlineLabel: editingOrder ? editingOrder.deadlineLabel : formState.deadlineLabel || undefined,
+      collectionTotal: formState.collectionTotal || 0,
       lastUpdateDate: new Date().toISOString()
     };
 
@@ -556,6 +562,7 @@ export const Orders: React.FC = () => {
       screenshot: undefined,
     deadlineDate: undefined,
     deadlineLabel: undefined,
+    collectionTotal: 0,
     });
   };
 
@@ -591,6 +598,7 @@ export const Orders: React.FC = () => {
       screenshot: ord.screenshot,
       deadlineDate: ord.deadlineDate,
       deadlineLabel: ord.deadlineLabel,
+      collectionTotal: ord.collectionTotal || 0,
     });
 
     setIsFormOpen(true);
@@ -853,7 +861,7 @@ export const Orders: React.FC = () => {
                     <th className="p-4 text-right">العنوان</th>
                     <th className="p-4 text-right">اسم الطفلة</th>
                     <th className="p-4 text-right">القطع المطلوبة بمقاسها ولونها</th>
-                    <th className="p-4 text-right">السعر لوحده</th>
+                    <th className="p-4 text-right">السعر / التحصيل</th>
                     <th className="p-4 text-center">حالة الأوردر</th>
                     <th className="p-4 text-center">إجراءات</th>
                   </tr>
@@ -960,9 +968,10 @@ export const Orders: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Order total fee */}
+                          {/* Order total fee & collection total (informational) */}
                           <td className="p-4 font-black font-mono text-slate-800 whitespace-nowrap text-xs">
-                            {(o.total || 0).toLocaleString()} ج.م
+                            <div>{(o.total || 0).toLocaleString()} ج.م</div>
+                            {o.collectionTotal ? <div className="text-[9px] text-blue-500 font-bold mt-0.5">تحصيل: {o.collectionTotal} ج.م</div> : null}
                           </td>
 
                           {/* Order general status pill dropdown */}
@@ -1454,6 +1463,13 @@ export const Orders: React.FC = () => {
                     </span>
                   </div>
 
+                  {currentRef.collectionTotal ? (
+                    <div className="flex justify-between items-center text-xs font-bold text-blue-500">
+                      <span>جملة التحصيل المطلوب (للمندوب)</span>
+                      <span className="font-mono">{currentRef.collectionTotal} ج.م</span>
+                    </div>
+                  ) : null}
+
                   <div className="pt-4 border-t border-slate-150 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 text-right">
                     {/* Notes detail right aligned */}
                     <div className="text-right space-y-1 sm:max-w-[240px]">
@@ -1944,6 +1960,17 @@ export const Orders: React.FC = () => {
                       className="w-full bg-white border border-[#f1f5f9] focus:border-blue-500 focus:bg-white rounded-2xl py-3 px-4 text-xs font-sans font-black text-right outline-none"
                       value={formState.discount || ""}
                       onChange={e => setFormState({ ...formState, discount: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+
+                  {/* Collection Total (informational only, not in accounting) */}
+                  <div className="space-y-1.5 text-right">
+                    <label className="text-[11px] font-bold text-slate-500 block">جملة التحصيل المطلوب (ج.م) 🏷️</label>
+                    <input
+                      type="number"
+                      className="w-full bg-white border border-[#f1f5f9] focus:border-blue-500 focus:bg-white rounded-2xl py-3 px-4 text-xs font-mono font-black text-right outline-none"
+                      value={formState.collectionTotal || ""}
+                      onChange={e => setFormState({ ...formState, collectionTotal: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
 
