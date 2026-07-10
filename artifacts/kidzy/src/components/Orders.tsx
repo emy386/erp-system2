@@ -218,7 +218,7 @@ export const Orders: React.FC = () => {
     };
 
     // Extract value following a label in format "Label: Value" or "Label\nValue"
-    const KNOWN_ORDER = ['الاسم','رقم تليفون','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','الشحن','توتال السعر','مدة التوصيل'];
+    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','ملاحظات','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','توتال السعر','مدة التوصيل'];
 
     // Helper: find the label in text and capture what follows (until next label or end)
     const labelVal = (label: string): string => {
@@ -234,9 +234,12 @@ export const Orders: React.FC = () => {
     // Extract header/footer fields
     const customerName = labelVal('الاسم');
     const customerPhone = labelVal('رقم تليفون') || cleanText.match(/01[0-9]{9}/)?.[0] || '';
+    const customerPhone2 = labelVal('رقم بديل');
     const governorateRaw = labelVal('المحافظة') || governorates.find(g => cleanText.includes(g)) || '';
     const governorate = govAlias[governorateRaw] || governorates.find(g => g.includes(governorateRaw.replace(/^ال/, ''))) || governorateRaw;
     const address = labelVal('العنوان');
+    const notes = labelVal('ملاحظات');
+    const discount = parseInt(labelVal('خصم').replace(/[ج\.]/g, '')) || 0;
     const shippingText = labelVal('الشحن');
     const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
     const shippingPaid = hasWord(shippingText, 'مدفوع') || hasWord(shippingText, 'تم الدفع') || hasWord(shippingText, 'تم دفع') || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
@@ -245,9 +248,9 @@ export const Orders: React.FC = () => {
     const deliveryText = labelVal('مدة التوصيل');
 
     // Extract item blocks: collect every label:value pair in item sequences
-    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'اسم الطفلة', 'سعر الاوردر'];
+    const itemLabels = ['نوع المنتج', 'اللون', 'المقاس', 'اسم الطفلة', 'سعر الاوردر', 'سعر القطعة'];
     // Collect all label:value pairs in the document
-    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [], 'سعر الاوردر': [] };
+    const allValues: Record<string, string[]> = { 'نوع المنتج': [], 'اللون': [], 'المقاس': [], 'اسم الطفلة': [], 'سعر الاوردر': [], 'سعر القطعة': [] };
 
     // Scan for item labels — pick the nearest match regardless of label order
     let searchFrom = 0;
@@ -265,7 +268,8 @@ export const Orders: React.FC = () => {
         }
       }
       if (!best) break;
-      allValues[best.lbl].push(best.val);
+      const normalizedLbl = best.lbl === 'سعر القطعة' ? 'سعر الاوردر' : best.lbl;
+      allValues[normalizedLbl].push(best.val);
       searchFrom = best.idx + best.len;
     }
 
@@ -329,11 +333,11 @@ export const Orders: React.FC = () => {
       customerPhone2: '', 
       governorate, 
       address, 
-      discount: 0, 
+      discount,
       deliveryDuration, 
       shippingPaid,
       shippingAmount,
-      notes: '', 
+      notes,
       parsedItems,
       totalPrice,
       deadlineDate,
