@@ -777,7 +777,7 @@ export const Orders: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {urgentOrders.map(uo => {
                   const dName = uo.deadlineDate ? ARABIC_DAYS[new Date(uo.deadlineDate).getDay()] : '';
-                  const dLeft = uo.deadlineDate ? Math.ceil((new Date(uo.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
+                  const dLeft = uo.deadlineDate ? Math.floor((new Date(uo.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
                   return (
                   <div 
                     key={uo.id} 
@@ -841,7 +841,7 @@ export const Orders: React.FC = () => {
                       const isCancelled = o.status === "cancelled";
                       const statusMeta = STATUS_DETAILS[o.status] || { label: o.status, color: "bg-slate-100 text-slate-700 border-slate-200", icon: Clock };
                       const deadlineDayName = o.deadlineDate ? ARABIC_DAYS[new Date(o.deadlineDate).getDay()] : '';
-                      const deadlineDaysLeft = o.deadlineDate ? Math.ceil((new Date(o.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
+                      const deadlineDaysLeft = o.deadlineDate ? Math.floor((new Date(o.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
 
                       const rowClass = isDelivered 
                         ? "bg-emerald-50 hover:bg-emerald-100/40 border-r-emerald-500 text-slate-800" 
