@@ -1487,13 +1487,18 @@ export const Orders: React.FC = () => {
                 {currentRef.screenshot && (
                   <div className="space-y-1.5 pt-1.5 border-t border-slate-100">
                     <span className="text-[9px] font-black text-slate-400 block uppercase text-right">لقطة شاشة المحادثة المرفقة (Screenshot):</span>
-                    <img
-                      src={currentRef.screenshot}
-                      alt="Screenshot preview"
-                      className="block border border-slate-150 rounded-2xl overflow-hidden hover:opacity-95 max-h-[160px] shadow-sm bg-slate-50 w-full object-cover cursor-pointer"
-                      referrerPolicy="no-referrer"
-                      onClick={() => window.open(currentRef.screenshot!, '_blank')}
-                    />
+                    <a 
+                      href={currentRef.screenshot} 
+                      target="_blank" 
+                      rel="noreferrer noopener"
+                    >
+                      <img 
+                        src={currentRef.screenshot} 
+                        alt="Screenshot preview"
+                        className="block border border-slate-150 rounded-2xl overflow-hidden hover:opacity-95 max-h-[160px] shadow-sm bg-slate-50 w-full object-cover cursor-pointer"
+                        referrerPolicy="no-referrer"
+                      />
+                    </a>
                   </div>
                 )}
 
