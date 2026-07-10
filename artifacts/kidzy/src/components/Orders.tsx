@@ -96,7 +96,8 @@ export const Orders: React.FC = () => {
         (o.customerPhone2 || "").includes(q);
 
       // Status
-      const matchStatus = statusFilter === "all" || o.status === statusFilter;
+      const isUrgentFilter = o.isUrgent || o.deliveryDuration === "urgent";
+      const matchStatus = statusFilter === "all" || (statusFilter === "urgent" ? isUrgentFilter : o.status === statusFilter);
 
       // Governorate
       const matchGov = govFilter === "all" || o.governorate === govFilter;
@@ -727,6 +728,7 @@ export const Orders: React.FC = () => {
                   className="w-full bg-slate-50 hover:bg-slate-100/30 focus:bg-white border border-slate-100 focus:border-blue-500/30 rounded-xl py-3 px-4 text-xs font-bold focus:ring-4 focus:ring-blue-500/10 transition-all outline-none text-slate-700 cursor-pointer text-right"
                 >
                   <option value="all">كل حالات الأوردرات</option>
+                  <option value="urgent">مستعجل ⏰</option>
                   {Object.entries(STATUS_DETAILS)
                     .filter(([k]) => k !== "completed")
                     .map(([k, v]) => (
