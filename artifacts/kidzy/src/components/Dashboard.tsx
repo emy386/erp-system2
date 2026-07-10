@@ -530,7 +530,8 @@ export function Dashboard() {
 
                       {/* 8. Order total fee */}
                       <td className="p-4 font-black font-mono text-slate-800 whitespace-nowrap text-xs text-left">
-                        {(o.total || 0).toLocaleString()} ج.م
+                        <div>{(o.total || 0).toLocaleString()} ج.م</div>
+                        {o.collectionTotal ? <div className="text-[9px] text-blue-500 font-bold mt-0.5">تحصيل: {o.collectionTotal} ج.م</div> : null}
                       </td>
 
                       {/* 9. Order general status pill dropdown */}
@@ -628,6 +629,12 @@ export function Dashboard() {
                     <p className="flex justify-between text-rose-600">
                       <span>خصومات إضافية:</span>
                       <strong>-{selectedOrder.discount.toLocaleString()} ج.م</strong>
+                    </p>
+                  ) : ""}
+                  {selectedOrder.collectionTotal ? (
+                    <p className="flex justify-between text-blue-500">
+                      <span>التحصيل المطلوب (للمندوب):</span>
+                      <strong>{selectedOrder.collectionTotal.toLocaleString()} ج.م</strong>
                     </p>
                   ) : ""}
                   <p className="flex justify-between pt-1 border-t border-slate-200/50 text-slate-800 font-black">
