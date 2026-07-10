@@ -1471,13 +1471,6 @@ export const Orders: React.FC = () => {
                   ) : null}
 
                   <div className="pt-4 border-t border-slate-150 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 text-right">
-                    {/* Notes detail right aligned */}
-                    <div className="text-right space-y-1 sm:max-w-[240px]">
-                      <span className="text-[10px] font-black text-slate-400 block">ملاحظات</span>
-                      <span className="text-xs font-bold italic text-slate-600 block leading-relaxed break-words">
-                        {currentRef.notes || "الرجاء الاتصال قبل الوصول"}
-                      </span>
-                    </div>
 
                     {/* Highly polished currency presentation */}
                     <div className="bg-emerald-50/40 p-4 rounded-2xl flex flex-row sm:flex-col justify-between items-center sm:items-end text-right sm:text-left shrink-0 gap-2">
