@@ -306,9 +306,9 @@ export const Orders: React.FC = () => {
     let deadlineDate = '';
     if (deliveryDuration === 'urgent') {
       const dayMatch = deliveryText.match(/قبل\s+(يوم\s+)?(\S+)/i);
-      if (dayMatch) {
-        const dayName = dayMatch[2];
-        const targetDay = Object.entries(dayNames).find(([k]) => k === dayName || dayName.includes(k.replace(/^الإ/, 'ال')) || k.includes(dayName));
+      const rawDayName = dayMatch?.[2] || Object.keys(dayNames).find(k => hasWord(deliveryText, k) || deliveryText.includes(k));
+      if (rawDayName) {
+        const targetDay = Object.entries(dayNames).find(([k]) => k === rawDayName || rawDayName.includes(k.replace(/^الإ/, 'ال')) || k.includes(rawDayName));
         if (targetDay) {
           const now = new Date();
           const currentDay = now.getDay();
