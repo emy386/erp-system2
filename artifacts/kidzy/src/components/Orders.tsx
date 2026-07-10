@@ -310,9 +310,10 @@ export const Orders: React.FC = () => {
       'السبت': 6,
     };
     let deadlineDate = '';
+    let rawDayName: string | undefined;
     if (deliveryDuration === 'urgent') {
       const dayMatch = deliveryText.match(/قبل\s+(يوم\s+)?(\S+)/i);
-      const rawDayName = dayMatch?.[2] || Object.keys(dayNames).find(k => hasWord(deliveryText, k) || deliveryText.includes(k));
+      rawDayName = dayMatch?.[2] || Object.keys(dayNames).find(k => hasWord(deliveryText, k) || deliveryText.includes(k));
       if (rawDayName) {
         const dayNum = parseInt(rawDayName);
         if (!isNaN(dayNum) && dayNum >= 1 && dayNum <= 31) {
