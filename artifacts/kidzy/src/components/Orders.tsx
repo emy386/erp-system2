@@ -222,7 +222,7 @@ export const Orders: React.FC = () => {
     };
 
     // Extract value following a label in format "Label: Value" or "Label\nValue"
-    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','جملة التحصيل','توتال السعر','مدة التوصيل'];
+    const KNOWN_ORDER = ['الاسم','رقم تليفون','رقم بديل','المحافظة','العنوان','نوع المنتج','اللون','المقاس','اسم الطفلة','سعر الاوردر','سعر القطعة','خصم','الشحن','التحصيل المطلوب','توتال السعر','مدة التوصيل'];
 
     // Helper: find the label in text and capture what follows (until next label or end)
     const labelVal = (label: string): string => {
@@ -247,7 +247,7 @@ export const Orders: React.FC = () => {
     const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
     const shippingPaid = hasWord(shippingText, 'مدفوع') || hasWord(shippingText, 'تم الدفع') || hasWord(shippingText, 'تم دفع') || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
     const shippingAmount = shippingPaid ? 0 : (parseInt(shippingText.replace(/[ج\.]/g, '')) || 0);
-    const collectionTotal = parseInt(labelVal('جملة التحصيل').replace(/[ج\.]/g, '')) || 0;
+    const collectionTotal = parseInt(labelVal('التحصيل المطلوب').replace(/[ج\.]/g, '')) || 0;
     const totalPrice = parseInt(labelVal('توتال السعر').replace(/[ج\.]/g, '')) || 0;
     const deliveryText = labelVal('مدة التوصيل');
 
@@ -1465,7 +1465,7 @@ export const Orders: React.FC = () => {
 
                   {currentRef.collectionTotal ? (
                     <div className="flex justify-between items-center text-xs font-bold text-blue-500">
-                      <span>جملة التحصيل المطلوب (للمندوب)</span>
+                      <span>التحصيل المطلوب (للمندوب)</span>
                       <span className="font-mono">{currentRef.collectionTotal} ج.م</span>
                     </div>
                   ) : null}
@@ -1965,7 +1965,7 @@ export const Orders: React.FC = () => {
 
                   {/* Collection Total (informational only, not in accounting) */}
                   <div className="space-y-1.5 text-right">
-                    <label className="text-[11px] font-bold text-slate-500 block">جملة التحصيل المطلوب (ج.م) 🏷️</label>
+                    <label className="text-[11px] font-bold text-slate-500 block">التحصيل المطلوب (ج.م) 🏷️</label>
                     <input
                       type="number"
                       className="w-full bg-white border border-[#f1f5f9] focus:border-blue-500 focus:bg-white rounded-2xl py-3 px-4 text-xs font-mono font-black text-right outline-none"
