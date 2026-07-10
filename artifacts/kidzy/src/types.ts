@@ -67,6 +67,7 @@ export interface Order {
   source: string;
   creationDate: string;
   deadlineDate: string;
+  deadlineLabel?: string;
   lastUpdateDate: string;
   items: OrderItem[];
   payments?: {

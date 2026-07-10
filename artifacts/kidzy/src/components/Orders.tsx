@@ -60,6 +60,7 @@ export const Orders: React.FC = () => {
     notes: string;
     screenshot?: string;
     deadlineDate?: string;
+    deadlineLabel?: string;
   }>({
     customerName: "",
     childName: "",
@@ -313,16 +314,32 @@ export const Orders: React.FC = () => {
       const dayMatch = deliveryText.match(/قبل\s+(يوم\s+)?(\S+)/i);
       const rawDayName = dayMatch?.[2] || Object.keys(dayNames).find(k => hasWord(deliveryText, k) || deliveryText.includes(k));
       if (rawDayName) {
-        const targetDay = Object.entries(dayNames).find(([k]) => k === rawDayName || rawDayName.includes(k.replace(/^الإ/, 'ال')) || k.includes(rawDayName));
-        if (targetDay) {
+        const dayNum = parseInt(rawDayName);
+        if (!isNaN(dayNum) && dayNum >= 1 && dayNum <= 31) {
           const now = new Date();
-          const currentDay = now.getDay();
-          let daysUntil = targetDay[1] - currentDay;
-          if (daysUntil <= 0) daysUntil += 7;
-          const deadline = new Date(now);
-          deadline.setDate(deadline.getDate() + daysUntil);
-          deadline.setHours(23, 59, 0, 0);
+          const currentDay = now.getDate();
+          let targetMonth = now.getMonth();
+          let targetYear = now.getFullYear();
+          if (currentDay >= dayNum) {
+            targetMonth += 1;
+            if (targetMonth > 11) { targetMonth = 0; targetYear += 1; }
+          }
+          const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+          const clamped = Math.min(dayNum, lastDay);
+          const deadline = new Date(targetYear, targetMonth, clamped, 23, 59, 0, 0);
           deadlineDate = deadline.toISOString();
+        } else {
+          const targetDay = Object.entries(dayNames).find(([k]) => k === rawDayName || rawDayName.includes(k.replace(/^الإ/, 'ال')) || k.includes(rawDayName));
+          if (targetDay) {
+            const now = new Date();
+            const currentDay = now.getDay();
+            let daysUntil = targetDay[1] - currentDay;
+            if (daysUntil <= 0) daysUntil += 7;
+            const deadline = new Date(now);
+            deadline.setDate(deadline.getDate() + daysUntil);
+            deadline.setHours(23, 59, 0, 0);
+            deadlineDate = deadline.toISOString();
+          }
         }
       }
     }
@@ -342,6 +359,7 @@ export const Orders: React.FC = () => {
       parsedItems,
       totalPrice,
       deadlineDate,
+      deadlineLabel: rawDayName || '',
     };
   };
 
@@ -388,6 +406,7 @@ export const Orders: React.FC = () => {
       notes: parsed.notes || prev.notes,
       items: transformedItems.length > 0 ? transformedItems : prev.items,
       deadlineDate: parsed.deadlineDate || prev.deadlineDate,
+      deadlineLabel: parsed.deadlineLabel || prev.deadlineLabel,
     }));
 
     setModalType("manual");
@@ -505,6 +524,7 @@ export const Orders: React.FC = () => {
       deadlineDate: editingOrder 
         ? editingOrder.deadlineDate 
         : formState.deadlineDate || new Date(Date.now() + 864e5 * (formState.deliveryDuration === "urgent" ? 2 : 5)).toISOString(),
+      deadlineLabel: editingOrder ? editingOrder.deadlineLabel : formState.deadlineLabel || undefined,
       lastUpdateDate: new Date().toISOString()
     };
 
@@ -532,7 +552,8 @@ export const Orders: React.FC = () => {
       source: "فيسبوك",
       notes: "",
       screenshot: undefined,
-      deadlineDate: undefined,
+    deadlineDate: undefined,
+    deadlineLabel: undefined,
     });
   };
 
@@ -567,6 +588,7 @@ export const Orders: React.FC = () => {
       notes: ord.notes || "",
       screenshot: ord.screenshot,
       deadlineDate: ord.deadlineDate,
+      deadlineLabel: ord.deadlineLabel,
     });
 
     setIsFormOpen(true);
@@ -782,7 +804,7 @@ export const Orders: React.FC = () => {
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {urgentOrders.map(uo => {
-                  const dName = uo.deadlineDate ? ARABIC_DAYS[new Date(uo.deadlineDate).getDay()] : '';
+                  const dName = uo.deadlineLabel || (uo.deadlineDate ? ARABIC_DAYS[new Date(uo.deadlineDate).getDay()] : '');
                   const dLeft = uo.deadlineDate ? Math.floor((new Date(uo.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
                   return (
                   <div 
@@ -846,7 +868,7 @@ export const Orders: React.FC = () => {
                       const isDelivered = o.status === "delivered";
                       const isCancelled = o.status === "cancelled";
                       const statusMeta = STATUS_DETAILS[o.status] || { label: o.status, color: "bg-slate-100 text-slate-700 border-slate-200", icon: Clock };
-                      const deadlineDayName = o.deadlineDate ? ARABIC_DAYS[new Date(o.deadlineDate).getDay()] : '';
+                      const deadlineLabel = o.deadlineLabel || (o.deadlineDate ? ARABIC_DAYS[new Date(o.deadlineDate).getDay()] : '');
                       const deadlineDaysLeft = o.deadlineDate ? Math.floor((new Date(o.deadlineDate).getTime() - Date.now()) / 86400000) : -1;
 
                       const rowClass = isDelivered 
@@ -865,7 +887,7 @@ export const Orders: React.FC = () => {
                           <td className="p-4">
                             {isUrgent && !isCancelled ? (
                               <span className="bg-red-50 text-red-600 px-2 py-1 rounded-lg text-[10px] font-black animate-pulse flex flex-col items-start leading-tight w-max">
-                                <span>⚡ مستعجل {deadlineDayName ? `قبل ${deadlineDayName}` : ''}</span>
+                                <span>⚡ مستعجل {deadlineLabel ? `قبل ${deadlineLabel}` : ''}</span>
                                 {deadlineDaysLeft > 0 && <span className="text-[9px] font-normal">متبقي {deadlineDaysLeft} أيام</span>}
                               </span>
                             ) : (
