@@ -136,6 +136,33 @@ export const Orders: React.FC = () => {
     });
   }, [orders, searchQuery]);
 
+  const returnedItems = useMemo(() => {
+    const items: { order: Order; item: OrderItem; itemIndex: number }[] = [];
+    for (const o of orders) {
+      if (o.status !== "returned" && o.status !== "returned_partial") continue;
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch = !q || 
+        o.id.toLowerCase().includes(q) ||
+        o.customerName.toLowerCase().includes(q) ||
+        o.customerPhone.includes(q) ||
+        (o.customerPhone2 || "").includes(q) ||
+        (o.items || []).some(it => (it.productName || it.name || "").toLowerCase().includes(q));
+      if (!matchSearch) continue;
+      if (o.status === "returned") {
+        (o.items || []).forEach((item, idx) => {
+          items.push({ order: o, item, itemIndex: idx });
+        });
+      } else if (o.status === "returned_partial") {
+        (o.items || []).forEach((item, idx) => {
+          if (item.isReturned) {
+            items.push({ order: o, item, itemIndex: idx });
+          }
+        });
+      }
+    }
+    return items;
+  }, [orders, searchQuery]);
+
   // Order Calculations
   const calculateFormTotal = () => {
     const itemsTotal = formState.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
@@ -613,6 +640,17 @@ export const Orders: React.FC = () => {
     }));
   };
 
+  const handleToggleItemReturn = (orderId: string, itemIdx: number) => {
+    setOrders(orders.map(o => {
+      if (o.id === orderId) {
+        const updatedItems = [...o.items];
+        updatedItems[itemIdx] = { ...updatedItems[itemIdx], isReturned: !updatedItems[itemIdx].isReturned };
+        return { ...o, items: updatedItems, lastUpdateDate: new Date().toISOString() };
+      }
+      return o;
+    }));
+  };
+
   const handleDeleteOrder = (id: string) => {
     if (confirm("🚨 هل أنت متأكد من حذف هذا الأوردر من السجلات نهائياً؟")) {
       setOrders(orders.filter(o => o.id !== id));
@@ -675,7 +713,14 @@ export const Orders: React.FC = () => {
             >
               <span>إدارة المرتجعات 🔄</span>
               <span className="bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0">
-                {orders.filter(o => o.status === "returned" || o.status === "returned_partial").length}
+                {(() => {
+                  let count = 0;
+                  for (const o of orders) {
+                    if (o.status === "returned") { count += (o.items || []).length; }
+                    else if (o.status === "returned_partial") { count += (o.items || []).filter(it => it.isReturned).length; }
+                  }
+                  return count;
+                })()}
               </span>
             </button>
           </div>
@@ -1029,23 +1074,23 @@ export const Orders: React.FC = () => {
           {/* Returns Stats Rows - Screenshot 4 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-2">
-              <p className="text-slate-500 font-extrabold text-xs">إجمالي المرتجعات</p>
+              <p className="text-slate-500 font-extrabold text-xs">إجمالي القطع المرتجعة</p>
               <p className="text-4xl font-black text-slate-800">
-                {orders.filter(o => o.status === "returned" || o.status === "returned_partial").length}
+                {returnedItems.length}
               </p>
             </div>
 
             <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100/50 shadow-sm text-center space-y-2">
-              <p className="text-[#059669] font-extrabold text-xs">رجع من الشركة</p>
+              <p className="text-[#059669] font-extrabold text-xs">مرتجع كلي (قطع)</p>
               <p className="text-4xl font-black text-[#059669]">
-                {orders.filter(o => o.status === "returned").length}
+                {returnedItems.filter(ri => ri.order.status === "returned").length}
               </p>
             </div>
 
             <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100/50 shadow-sm text-center space-y-2">
-              <p className="text-blue-600 font-extrabold text-xs">خرج في أوردر جديد</p>
+              <p className="text-blue-600 font-extrabold text-xs">مرتجع جزئي (قطع)</p>
               <p className="text-4xl font-black text-[#2563eb]">
-                {orders.filter(o => o.status === "returned_partial").length}
+                {returnedItems.filter(ri => ri.order.status === "returned_partial").length}
               </p>
             </div>
           </div>
@@ -1065,9 +1110,9 @@ export const Orders: React.FC = () => {
           {/* Returns Table List */}
           <div className="bg-white rounded-[2rem] border border-slate-150/60 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-rose-100/30 flex justify-between items-center bg-slate-50/20 text-right">
-              <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm">سجلات الأوردر المرتجعة للورشة والمندوبين 🔄</h3>
+              <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm">القطع المرتجعة 🔄</h3>
               <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-xl">
-                {returnedOrders.length} مرتجع مصفى
+                {returnedItems.length} قطعة مرتجعة
               </span>
             </div>
 
@@ -1075,57 +1120,59 @@ export const Orders: React.FC = () => {
               <table className="w-full text-right text-xs">
                 <thead>
                   <tr className="bg-slate-100/50 text-slate-455 font-extrabold border-b border-slate-100">
-                    <th className="p-4 text-right">الأوردر والعميل</th>
+                    <th className="p-4 text-right">العميل / الأوردر</th>
                     <th className="p-4 text-right">تاريخ الأوردر</th>
-                    <th className="p-4 text-right">المنتج والتفاصيل المرتجعة</th>
-                    <th className="p-4 text-center">حالة المرتجع</th>
+                    <th className="p-4 text-right">القطعة المرتجعة</th>
+                    <th className="p-4 text-center">نوع المرتجع</th>
+                    <th className="p-4 text-center">إجراء</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-slate-700 font-bold font-sans">
-                  {returnedOrders.length === 0 ? (
+                  {returnedItems.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-16 text-center text-xs font-bold text-slate-400">
-                        لا يوجد مرتجعات مسجلة ومطابقة للتتبع الحالي.
+                      <td colSpan={5} className="p-16 text-center text-xs font-bold text-slate-400">
+                        لا يوجد قطع مرتجعة مسجلة ومطابقة للتتبع الحالي.
                       </td>
                     </tr>
                   ) : (
-                    returnedOrders.map(o => (
-                      <tr key={o.id} className="hover:bg-slate-50/50 transition-all cursor-pointer" onClick={() => setViewingOrder(o)}>
+                    returnedItems.map((ri, idx) => (
+                      <tr key={`${ri.order.id}-${ri.itemIndex}`} className="hover:bg-slate-50/50 transition-all cursor-pointer" onClick={() => setViewingOrder(ri.order)}>
                         <td className="p-4">
                           <div className="flex flex-col text-right">
-                            <span className="font-extrabold text-slate-800 text-xs">{o.customerName}</span>
-                            <span className="text-[10px] text-slate-450 font-mono mt-0.5">{o.id} • {o.customerPhone}</span>
+                            <span className="font-extrabold text-slate-800 text-xs">{ri.order.customerName}</span>
+                            <span className="text-[10px] text-slate-450 font-mono mt-0.5">{ri.order.id} • {ri.order.customerPhone}</span>
                           </div>
                         </td>
                         <td className="p-4 text-slate-600">
-                          {new Date(o.creationDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                          {new Date(ri.order.creationDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
                         </td>
                         <td className="p-4">
-                          <div className="flex flex-col gap-1">
-                            {(o.items || []).map((it, idx) => (
-                              <div key={idx} className="flex items-center gap-1.5 justify-start text-[11px] text-slate-700">
-                                <span className="bg-slate-100 text-slate-650 px-1.5 py-0.5 rounded text-[9px] font-mono shrink-0 font-bold">
-                                  {it.quantity}x
-                                </span>
-                                <span className="truncate max-w-[180px] font-bold">{it.productName || it.name}</span>
-                                <span className="text-slate-400 text-[9px] font-semibold">
-                                  ({it.size || "عادي"}/{it.color || "عادي"})
-                                </span>
-                              </div>
-                            ))}
+                          <div className="flex items-center gap-2 text-[11px] text-slate-700">
+                            <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-lg text-[9px] font-mono shrink-0 font-bold">
+                              {ri.item.quantity}x
+                            </span>
+                            <span className="truncate max-w-[180px] font-bold">{ri.item.productName || ri.item.name}</span>
+                            <span className="text-slate-400 text-[9px] font-semibold">
+                              ({ri.item.size || "عادي"}/{ri.item.color || "عادي"})
+                            </span>
                           </div>
                         </td>
+                        <td className="p-4 text-center">
+                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl ${
+                            ri.order.status === "returned"
+                              ? "bg-red-50 text-red-700 border border-red-200"
+                              : "bg-orange-50 text-orange-700 border border-orange-200"
+                          }`}>
+                            {ri.order.status === "returned" ? "مرتجع كلي 🚨" : "مرتجع جزئي ⚠️"}
+                          </span>
+                        </td>
                         <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
-                          <select
-                            value={o.status}
-                            onChange={e => handleStatusChange(o.id, e.target.value as OrderStatus)}
-                            className="text-[11px] font-black border bg-rose-50 border-rose-200 text-rose-700 rounded-xl py-1 px-3 outline-none cursor-pointer"
+                          <button
+                            onClick={() => handleToggleItemReturn(ri.order.id, ri.itemIndex)}
+                            className="text-[10px] font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
                           >
-                            <option value="returned">مرتجع كلي 🚨</option>
-                            <option value="returned_partial">مرتجع جزئي ⚠️</option>
-                            <option value="delivered">تم التوصيل ✅</option>
-                            <option value="new">جديد ⚡</option>
-                          </select>
+                            إلغاء المرتجع ↩️
+                          </button>
                         </td>
                       </tr>
                     ))
