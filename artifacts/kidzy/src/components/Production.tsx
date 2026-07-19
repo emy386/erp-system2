@@ -28,10 +28,18 @@ export function Production() {
   // Tabs: production (الإنتاج الموحد) | accounts (حسابات الورش) | cutting (القص) | sewing (التقفيل) | packaging (التغليف)
   const [activeTab, setActiveTab] = useState<'production' | 'accounts' | 'cutting' | 'sewing' | 'packaging'>('production');
 
-  // Production statuses state mapping 'variantId' to 'available' / 'shipped'
-  const [productionStatuses, setProductionStatuses] = useState<Record<string, 'available' | 'shipped'>>(() => {
+  // Production statuses: tracks shipped count + timestamped history per variant
+  const [productionStatuses, setProductionStatuses] = useState<Record<string, { shipped: number; history: { date: string; amount: number }[] }>>(() => {
     const saved = localStorage.getItem('kidzy_production_statuses');
-    return saved ? JSON.parse(saved) : {};
+    if (!saved) return {};
+    try {
+      const parsed = JSON.parse(saved);
+      // Migration from old format ('available'/'shipped' or per-piece keys)
+      if (typeof Object.values(parsed)[0] === 'string') {
+        return {};
+      }
+      return parsed;
+    } catch { return {}; }
   });
   const [productionStatusFilter, setProductionStatusFilter] = useState<'all' | 'available' | 'shipped'>('all');
 
@@ -808,10 +816,16 @@ export function Production() {
     setNewStagePaidAmount(0);
   };
 
-  const handleUpdateStatus = (pieceKey: string, newStatus: 'available' | 'shipped') => {
+  const handleUpdateStatus = (variantId: string, delta: number) => {
+    const prev = productionStatuses[variantId] || { shipped: 0, history: [] };
+    const newShipped = Math.max(0, Math.min(prev.shipped + delta, 9999));
+    if (newShipped === prev.shipped) return;
     const updated = {
       ...productionStatuses,
-      [pieceKey]: newStatus
+      [variantId]: {
+        shipped: newShipped,
+        history: [{ date: new Date().toISOString(), amount: delta }, ...prev.history].slice(0, 50)
+      }
     };
     setProductionStatuses(updated);
     localStorage.setItem('kidzy_production_statuses', JSON.stringify(updated));
@@ -1380,15 +1394,28 @@ export function Production() {
                   }, 0)})
                 </button>
                 <button 
+                  onClick={() => setProductionStatusFilter('all')}
+                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'all' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                >
+                  جميع الحالات ({producedPieces.reduce((sum, p) => sum + Math.max(p.cutQty, p.sewQty, p.pkgQty), 0)})
+                </button>
+                <button 
+                  onClick={() => setProductionStatusFilter('available')}
+                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'available' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                >
+                  📦 موجودة في المخزون ({producedPieces.reduce((sum, p) => {
+                    const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
+                    const info = productionStatuses[p.variantId];
+                    return sum + total - (info?.shipped || 0);
+                  }, 0)})
+                </button>
+                <button 
                   onClick={() => setProductionStatusFilter('shipped')}
                   className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'shipped' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                 >
                   🚚 خرجت في أوردر ({producedPieces.reduce((sum, p) => {
-                    const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
-                    const hasNewKey = Array.from({length: total}, (_, j) => `${p.variantId}::p-${j}`).some(k => k in productionStatuses);
-                    if (!hasNewKey) { const s = productionStatuses[p.variantId] || 'available'; return sum + (s === 'shipped' ? total : 0); }
-                    for (let i = 0; i < total; i++) { if ((productionStatuses[`${p.variantId}::p-${i}`] || 'available') === 'shipped') sum++; }
-                    return sum;
+                    const info = productionStatuses[p.variantId];
+                    return sum + (info?.shipped || 0);
                   }, 0)})
                 </button>
               </div>
@@ -1407,22 +1434,15 @@ export function Production() {
                   piece.cutWorkers.some(w => w.toLowerCase().includes(q)) ||
                   piece.sewWorkers.some(w => w.toLowerCase().includes(q));
 
-                const currentStatus = productionStatuses[piece.variantId] || 'available';
                 const totalPieces = Math.max(piece.cutQty, piece.sewQty, piece.pkgQty);
-                const hasPerPieceKeys = Array.from({length: totalPieces}, (_, j) => `${piece.variantId}::p-${j}`).some(k => k in productionStatuses);
+                const statusInfo = productionStatuses[piece.variantId];
+                const shipped = statusInfo?.shipped || 0;
+                const available = totalPieces - shipped;
                 let matchesStatus = true;
                 if (productionStatusFilter === 'available') {
-                  if (hasPerPieceKeys) {
-                    matchesStatus = Array.from({length: totalPieces}, (_, i) => (productionStatuses[`${piece.variantId}::p-${i}`] || 'available') === 'available').some(Boolean);
-                  } else {
-                    matchesStatus = currentStatus === 'available';
-                  }
+                  matchesStatus = available > 0;
                 } else if (productionStatusFilter === 'shipped') {
-                  if (hasPerPieceKeys) {
-                    matchesStatus = Array.from({length: totalPieces}, (_, i) => (productionStatuses[`${piece.variantId}::p-${i}`] || 'available') === 'shipped').some(Boolean);
-                  } else {
-                    matchesStatus = currentStatus === 'shipped';
-                  }
+                  matchesStatus = shipped > 0;
                 }
 
                 return matchesSearch && matchesStatus;
@@ -1442,15 +1462,11 @@ export function Production() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredProducedPieces.map(piece => {
                     const totalPieces = Math.max(piece.cutQty, piece.sewQty, piece.pkgQty);
-                    const hasPerPieceKeys = Array.from({length: totalPieces}, (_, j) => `${piece.variantId}::p-${j}`).some(k => k in productionStatuses);
-                    const pieceStatuses = Array.from({length: totalPieces}, (_, i) => {
-                      if (hasPerPieceKeys) return productionStatuses[`${piece.variantId}::p-${i}`] || 'available';
-                      return productionStatuses[piece.variantId] || 'available';
-                    });
-                    const availCount = pieceStatuses.filter(s => s === 'available').length;
-                    const shippedCount = pieceStatuses.filter(s => s === 'shipped').length;
-                    const allShipped = shippedCount === totalPieces;
-                    const allAvailable = availCount === totalPieces;
+                    const statusInfo = productionStatuses[piece.variantId];
+                    const shipped = statusInfo?.shipped || 0;
+                    const available = totalPieces - shipped;
+                    const allShipped = shipped >= totalPieces;
+                    const allAvailable = available >= totalPieces;
                     return (
                       <div 
                         key={piece.variantId} 
@@ -1472,7 +1488,7 @@ export function Production() {
                                 ? 'bg-slate-100 text-slate-500'
                                 : 'bg-amber-50 text-amber-600 border border-amber-100'
                             }`}>
-                              {allAvailable ? '📦 موجودة في المخزون' : allShipped ? '🚚 خرجت في أوردر' : `📦 ${availCount}/${totalPieces} متاحة`}
+                              {allAvailable ? '📦 موجودة في المخزون' : allShipped ? '🚚 خرجت في أوردر' : `📦 ${available}/${totalPieces} متاحة`}
                             </span>
                             <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
                               كود: {piece.productCode || 'N/A'}
@@ -1530,29 +1546,44 @@ export function Production() {
                           </div>
                         </div>
 
-                        {/* Per-piece status pills */}
-                        <div className="border-t border-slate-100 pt-3 mt-auto">
-                          <label className="text-[10px] text-slate-400 font-bold block mb-2">حالة كل قطعة في المخزن</label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {Array.from({length: totalPieces}, (_, i) => {
-                              const pieceKey = `${piece.variantId}::p-${i}`;
-                              const st = hasPerPieceKeys ? (productionStatuses[pieceKey] || 'available') : (productionStatuses[piece.variantId] || 'available');
-                              return (
-                                <button
-                                  key={pieceKey}
-                                  type="button"
-                                  onClick={() => handleUpdateStatus(pieceKey, st === 'available' ? 'shipped' : 'available')}
-                                  className={`text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer border ${
-                                    st === 'available'
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                      : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                                  }`}
-                                >
-                                  {st === 'available' ? '📦' : '🚚'} قطعة {i + 1}
-                                </button>
-                              );
-                            })}
+                        {/* Counter stepper + history */}
+                        <div className="border-t border-slate-100 pt-3 mt-auto space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-[10px] text-slate-400 font-bold">القطع في المخزن:</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStatus(piece.variantId, -1)}
+                                disabled={shipped <= 0}
+                                className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-sm flex items-center justify-center transition-all cursor-pointer"
+                              >
+                                −
+                              </button>
+                              <div className="flex gap-3 text-xs font-black">
+                                <span className="text-emerald-600">{available} متاح</span>
+                                <span className="text-slate-300">|</span>
+                                <span className="text-slate-500">{shipped} خارج</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStatus(piece.variantId, 1)}
+                                disabled={shipped >= totalPieces}
+                                className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 hover:bg-emerald-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-sm flex items-center justify-center transition-all cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
                           </div>
+                          {statusInfo?.history && statusInfo.history.length > 0 && (
+                            <div className="bg-slate-50/60 rounded-xl p-2 max-h-[100px] overflow-y-auto space-y-1">
+                              {statusInfo.history.slice(0, 10).map((entry, ei) => (
+                                <div key={ei} className="flex justify-between items-center text-[9px] text-slate-400 font-bold">
+                                  <span>{entry.amount > 0 ? '🚚 خرج' : '📦 عودة'} {Math.abs(entry.amount)} قطعة</span>
+                                  <span className="font-mono">{new Date(entry.date).toLocaleString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
