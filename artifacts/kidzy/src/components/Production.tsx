@@ -831,6 +831,39 @@ export function Production() {
     localStorage.setItem('kidzy_production_statuses', JSON.stringify(updated));
   };
 
+  const handleUndoStatus = (variantId: string) => {
+    const prev = productionStatuses[variantId];
+    if (!prev || prev.history.length === 0) return;
+    const lastEntry = prev.history[0];
+    const revertedShipped = Math.max(0, prev.shipped - lastEntry.amount);
+    const updated = {
+      ...productionStatuses,
+      [variantId]: {
+        shipped: revertedShipped,
+        history: prev.history.slice(1)
+      }
+    };
+    setProductionStatuses(updated);
+    localStorage.setItem('kidzy_production_statuses', JSON.stringify(updated));
+  };
+
+  const handleResetStatus = (variantId: string) => {
+    const prev = productionStatuses[variantId];
+    if (!prev || prev.shipped === 0) return;
+    const resetHistory = prev.shipped > 0
+      ? [{ date: new Date().toISOString(), amount: -prev.shipped }, ...prev.history]
+      : prev.history;
+    const updated = {
+      ...productionStatuses,
+      [variantId]: {
+        shipped: 0,
+        history: resetHistory.slice(0, 50)
+      }
+    };
+    setProductionStatuses(updated);
+    localStorage.setItem('kidzy_production_statuses', JSON.stringify(updated));
+  };
+
   const getPaymentStatus = (worker: Worker) => {
     if (worker.remainingBalance <= 0) return { label: 'مدفوع بالكامل', color: 'text-emerald-600 bg-emerald-50' };
     if (worker.totalPaid === 0) return { label: 'غير مدفوع', color: 'text-red-600 bg-red-50' };
@@ -1373,52 +1406,32 @@ export function Production() {
                 />
               </div>
             </div>
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pt-3 border-t border-slate-100">
-              <div className="flex flex-wrap bg-slate-100/75 p-1 rounded-2xl w-full lg:w-auto gap-1">
-                <button 
-                  onClick={() => setProductionStatusFilter('all')}
-                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'all' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                >
-                  جميع الحالات ({producedPieces.reduce((sum, p) => sum + Math.max(p.cutQty, p.sewQty, p.pkgQty), 0)})
-                </button>
-                <button 
-                  onClick={() => setProductionStatusFilter('available')}
-                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'available' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                >
-                  📦 موجودة في المخزون ({producedPieces.reduce((sum, p) => {
-                    const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
-                    const hasNewKey = Array.from({length: total}, (_, j) => `${p.variantId}::p-${j}`).some(k => k in productionStatuses);
-                    if (!hasNewKey) { const s = productionStatuses[p.variantId] || 'available'; return sum + (s === 'available' ? total : 0); }
-                    for (let i = 0; i < total; i++) { if ((productionStatuses[`${p.variantId}::p-${i}`] || 'available') === 'available') sum++; }
-                    return sum;
-                  }, 0)})
-                </button>
-                <button 
-                  onClick={() => setProductionStatusFilter('all')}
-                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'all' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                >
-                  جميع الحالات ({producedPieces.reduce((sum, p) => sum + Math.max(p.cutQty, p.sewQty, p.pkgQty), 0)})
-                </button>
-                <button 
-                  onClick={() => setProductionStatusFilter('available')}
-                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'available' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                >
-                  📦 موجودة في المخزون ({producedPieces.reduce((sum, p) => {
-                    const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
-                    const info = productionStatuses[p.variantId];
-                    return sum + total - (info?.shipped || 0);
-                  }, 0)})
-                </button>
-                <button 
-                  onClick={() => setProductionStatusFilter('shipped')}
-                  className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'shipped' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                >
-                  🚚 خرجت في أوردر ({producedPieces.reduce((sum, p) => {
-                    const info = productionStatuses[p.variantId];
-                    return sum + (info?.shipped || 0);
-                  }, 0)})
-                </button>
-              </div>
+            <div className="flex flex-wrap bg-slate-100/75 p-1 rounded-2xl w-full gap-1">
+              <button 
+                onClick={() => setProductionStatusFilter('all')}
+                className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'all' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                جميع الحالات ({producedPieces.reduce((sum, p) => sum + Math.max(p.cutQty, p.sewQty, p.pkgQty), 0)})
+              </button>
+              <button 
+                onClick={() => setProductionStatusFilter('available')}
+                className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'available' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                📦 موجودة في المخزون ({producedPieces.reduce((sum, p) => {
+                  const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
+                  const info = productionStatuses[p.variantId];
+                  return sum + total - (info?.shipped || 0);
+                }, 0)})
+              </button>
+              <button 
+                onClick={() => setProductionStatusFilter('shipped')}
+                className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'shipped' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                🚚 خرجت في أوردر ({producedPieces.reduce((sum, p) => {
+                  const info = productionStatuses[p.variantId];
+                  return sum + (info?.shipped || 0);
+                }, 0)})
+              </button>
             </div>
           </div>
 
@@ -1549,6 +1562,28 @@ export function Production() {
                         {/* Counter stepper + history */}
                         <div className="border-t border-slate-100 pt-3 mt-auto space-y-3">
                           <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-1">
+                              {statusInfo && statusInfo.history.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUndoStatus(piece.variantId)}
+                                  className="text-[9px] px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 font-bold transition-all cursor-pointer"
+                                  title="تراجع عن آخر خطوة"
+                                >
+                                  ↩
+                                </button>
+                              )}
+                              {shipped > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetStatus(piece.variantId)}
+                                  className="text-[9px] px-1.5 py-0.5 rounded-lg bg-red-50 text-red-300 hover:bg-red-100 hover:text-red-500 font-bold transition-all cursor-pointer"
+                                  title="إعادة تعيين الكل للمخزن"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
                             <span className="text-[10px] text-slate-400 font-bold">القطع في المخزن:</span>
                             <div className="flex items-center gap-2">
                               <button
