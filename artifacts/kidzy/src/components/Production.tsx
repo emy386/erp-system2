@@ -808,10 +808,10 @@ export function Production() {
     setNewStagePaidAmount(0);
   };
 
-  const handleUpdateStatus = (variantId: string, newStatus: 'available' | 'shipped') => {
+  const handleUpdateStatus = (pieceKey: string, newStatus: 'available' | 'shipped') => {
     const updated = {
       ...productionStatuses,
-      [variantId]: newStatus
+      [pieceKey]: newStatus
     };
     setProductionStatuses(updated);
     localStorage.setItem('kidzy_production_statuses', JSON.stringify(updated));
@@ -1365,19 +1365,31 @@ export function Production() {
                   onClick={() => setProductionStatusFilter('all')}
                   className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'all' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                 >
-                  جميع الحالات ({producedPieces.length})
+                  جميع الحالات ({producedPieces.reduce((sum, p) => sum + Math.max(p.cutQty, p.sewQty, p.pkgQty), 0)})
                 </button>
                 <button 
                   onClick={() => setProductionStatusFilter('available')}
                   className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'available' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                 >
-                  📦 موجودة في المخزون ({producedPieces.filter(p => (productionStatuses[p.variantId] || 'available') === 'available').length})
+                  📦 موجودة في المخزون ({producedPieces.reduce((sum, p) => {
+                    const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
+                    const hasNewKey = Array.from({length: total}, (_, j) => `${p.variantId}::p-${j}`).some(k => k in productionStatuses);
+                    if (!hasNewKey) { const s = productionStatuses[p.variantId] || 'available'; return sum + (s === 'available' ? total : 0); }
+                    for (let i = 0; i < total; i++) { if ((productionStatuses[`${p.variantId}::p-${i}`] || 'available') === 'available') sum++; }
+                    return sum;
+                  }, 0)})
                 </button>
                 <button 
                   onClick={() => setProductionStatusFilter('shipped')}
                   className={`flex-1 lg:flex-none px-4 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${productionStatusFilter === 'shipped' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                 >
-                  🚚 خرجت في أوردر ({producedPieces.filter(p => (productionStatuses[p.variantId] || 'available') === 'shipped').length})
+                  🚚 خرجت في أوردر ({producedPieces.reduce((sum, p) => {
+                    const total = Math.max(p.cutQty, p.sewQty, p.pkgQty);
+                    const hasNewKey = Array.from({length: total}, (_, j) => `${p.variantId}::p-${j}`).some(k => k in productionStatuses);
+                    if (!hasNewKey) { const s = productionStatuses[p.variantId] || 'available'; return sum + (s === 'shipped' ? total : 0); }
+                    for (let i = 0; i < total; i++) { if ((productionStatuses[`${p.variantId}::p-${i}`] || 'available') === 'shipped') sum++; }
+                    return sum;
+                  }, 0)})
                 </button>
               </div>
             </div>
@@ -1396,7 +1408,22 @@ export function Production() {
                   piece.sewWorkers.some(w => w.toLowerCase().includes(q));
 
                 const currentStatus = productionStatuses[piece.variantId] || 'available';
-                const matchesStatus = productionStatusFilter === 'all' || currentStatus === productionStatusFilter;
+                const totalPieces = Math.max(piece.cutQty, piece.sewQty, piece.pkgQty);
+                const hasPerPieceKeys = Array.from({length: totalPieces}, (_, j) => `${piece.variantId}::p-${j}`).some(k => k in productionStatuses);
+                let matchesStatus = true;
+                if (productionStatusFilter === 'available') {
+                  if (hasPerPieceKeys) {
+                    matchesStatus = Array.from({length: totalPieces}, (_, i) => (productionStatuses[`${piece.variantId}::p-${i}`] || 'available') === 'available').some(Boolean);
+                  } else {
+                    matchesStatus = currentStatus === 'available';
+                  }
+                } else if (productionStatusFilter === 'shipped') {
+                  if (hasPerPieceKeys) {
+                    matchesStatus = Array.from({length: totalPieces}, (_, i) => (productionStatuses[`${piece.variantId}::p-${i}`] || 'available') === 'shipped').some(Boolean);
+                  } else {
+                    matchesStatus = currentStatus === 'shipped';
+                  }
+                }
 
                 return matchesSearch && matchesStatus;
               });
@@ -1414,25 +1441,38 @@ export function Production() {
               return (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredProducedPieces.map(piece => {
-                    const status = productionStatuses[piece.variantId] || 'available';
+                    const totalPieces = Math.max(piece.cutQty, piece.sewQty, piece.pkgQty);
+                    const hasPerPieceKeys = Array.from({length: totalPieces}, (_, j) => `${piece.variantId}::p-${j}`).some(k => k in productionStatuses);
+                    const pieceStatuses = Array.from({length: totalPieces}, (_, i) => {
+                      if (hasPerPieceKeys) return productionStatuses[`${piece.variantId}::p-${i}`] || 'available';
+                      return productionStatuses[piece.variantId] || 'available';
+                    });
+                    const availCount = pieceStatuses.filter(s => s === 'available').length;
+                    const shippedCount = pieceStatuses.filter(s => s === 'shipped').length;
+                    const allShipped = shippedCount === totalPieces;
+                    const allAvailable = availCount === totalPieces;
                     return (
                       <div 
                         key={piece.variantId} 
                         className={`bg-white p-5 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between text-right shadow-sm ${
-                          status === 'shipped' 
+                          allShipped 
                             ? 'border-slate-150 bg-slate-50/40 opacity-70 hover:opacity-100 grayscale-[15%]' 
-                            : 'border-emerald-100/60 shadow-emerald-50/10 hover:border-emerald-200'
+                            : allAvailable
+                            ? 'border-emerald-100/60 shadow-emerald-50/10 hover:border-emerald-200'
+                            : 'border-amber-200/70 bg-amber-50/20 shadow-amber-50'
                         }`}
                       >
                         <div>
                           {/* Upper Details */}
                           <div className="flex justify-between items-start mb-4">
                             <span className={`text-[10px] px-2.5 py-1 rounded-xl font-black ${
-                              status === 'available' 
+                              allAvailable 
                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                : 'bg-slate-100 text-slate-500'
+                                : allShipped
+                                ? 'bg-slate-100 text-slate-500'
+                                : 'bg-amber-50 text-amber-600 border border-amber-100'
                             }`}>
-                              {status === 'available' ? '📦 موجودة في المخزون' : '🚚 خرجت في أوردر'}
+                              {allAvailable ? '📦 موجودة في المخزون' : allShipped ? '🚚 خرجت في أوردر' : `📦 ${availCount}/${totalPieces} متاحة`}
                             </span>
                             <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
                               كود: {piece.productCode || 'N/A'}
@@ -1490,17 +1530,29 @@ export function Production() {
                           </div>
                         </div>
 
-                        {/* Dropdown status update selector */}
+                        {/* Per-piece status pills */}
                         <div className="border-t border-slate-100 pt-3 mt-auto">
-                          <label className="text-[10px] text-slate-400 font-bold block mb-1">تحديث حالة القطعة بالمخزن</label>
-                          <select
-                            value={status}
-                            onChange={(e) => handleUpdateStatus(piece.variantId, e.target.value as 'available' | 'shipped')}
-                            className="w-full bg-slate-50 border-none rounded-xl py-2 px-3 text-[11px] font-bold text-slate-600 text-right outline-none cursor-pointer focus:ring-1 focus:ring-slate-200"
-                          >
-                            <option value="available">📦 متوفر بالمخزن</option>
-                            <option value="shipped">🚚 خرجت في أوردر (شحن)</option>
-                          </select>
+                          <label className="text-[10px] text-slate-400 font-bold block mb-2">حالة كل قطعة في المخزن</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Array.from({length: totalPieces}, (_, i) => {
+                              const pieceKey = `${piece.variantId}::p-${i}`;
+                              const st = hasPerPieceKeys ? (productionStatuses[pieceKey] || 'available') : (productionStatuses[piece.variantId] || 'available');
+                              return (
+                                <button
+                                  key={pieceKey}
+                                  type="button"
+                                  onClick={() => handleUpdateStatus(pieceKey, st === 'available' ? 'shipped' : 'available')}
+                                  className={`text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer border ${
+                                    st === 'available'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {st === 'available' ? '📦' : '🚚'} قطعة {i + 1}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     );
