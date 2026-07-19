@@ -651,6 +651,37 @@ export const Orders: React.FC = () => {
     }));
   };
 
+  const handleReturnOutcomeChange = (orderId: string, itemIdx: number, outcome: 'in_stock' | 'reshipped') => {
+    setOrders(orders.map(o => {
+      if (o.id === orderId) {
+        const updatedItems = [...o.items];
+        const item = { ...updatedItems[itemIdx], returnOutcome: outcome };
+        updatedItems[itemIdx] = item;
+        return { ...o, items: updatedItems, lastUpdateDate: new Date().toISOString() };
+      }
+      return o;
+    }));
+    const item = orders.find(o => o.id === orderId)?.items?.[itemIdx];
+    if (item?.variantId && outcome === 'in_stock') {
+      try {
+        const saved = localStorage.getItem('kidzy_production_statuses');
+        if (saved) {
+          const statuses = JSON.parse(saved);
+          const prev = statuses[item.variantId] || { shipped: 0, history: [] };
+          const qty = item.quantity || 1;
+          const newShipped = Math.max(0, prev.shipped - qty);
+          if (newShipped !== prev.shipped) {
+            statuses[item.variantId] = {
+              shipped: newShipped,
+              history: [{ date: new Date().toISOString(), amount: -qty }, ...prev.history].slice(0, 50)
+            };
+            localStorage.setItem('kidzy_production_statuses', JSON.stringify(statuses));
+          }
+        }
+      } catch {}
+    }
+  };
+
   const handleDeleteOrder = (id: string) => {
     if (confirm("🚨 هل أنت متأكد من حذف هذا الأوردر من السجلات نهائياً؟")) {
       setOrders(orders.filter(o => o.id !== id));
@@ -1124,13 +1155,14 @@ export const Orders: React.FC = () => {
                     <th className="p-4 text-right">تاريخ الأوردر</th>
                     <th className="p-4 text-right">القطعة المرتجعة</th>
                     <th className="p-4 text-center">نوع المرتجع</th>
+                    <th className="p-4 text-center">مصير القطعة</th>
                     <th className="p-4 text-center">إجراء</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-slate-700 font-bold font-sans">
                   {returnedItems.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-16 text-center text-xs font-bold text-slate-400">
+                      <td colSpan={6} className="p-16 text-center text-xs font-bold text-slate-400">
                         لا يوجد قطع مرتجعة مسجلة ومطابقة للتتبع الحالي.
                       </td>
                     </tr>
@@ -1167,9 +1199,37 @@ export const Orders: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <select
+                              value={ri.item.returnOutcome || ''}
+                              onChange={e => handleReturnOutcomeChange(ri.order.id, ri.itemIndex, e.target.value as 'in_stock' | 'reshipped')}
+                              className={`text-[10px] font-black border rounded-xl py-1 px-2 outline-none cursor-pointer ${
+                                ri.item.returnOutcome === 'in_stock'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : ri.item.returnOutcome === 'reshipped'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                              }`}
+                            >
+                              <option value="" disabled>اختر المصير...</option>
+                              <option value="in_stock">📦 في المخزون</option>
+                              <option value="reshipped">🚚 خرج في أوردر</option>
+                            </select>
+                            {ri.item.returnOutcome && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                                ri.item.returnOutcome === 'in_stock'
+                                  ? 'bg-emerald-50 text-emerald-500'
+                                  : 'bg-blue-50 text-blue-500'
+                              }`}>
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => handleToggleItemReturn(ri.order.id, ri.itemIndex)}
-                            className="text-[10px] font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                            className="text-[10px] font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200"
                           >
                             إلغاء المرتجع ↩️
                           </button>

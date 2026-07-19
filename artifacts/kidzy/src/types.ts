@@ -36,6 +36,7 @@ export interface OrderItem {
   price: number;
   productionStatus: "not_started" | "in_production" | "completed" | "cancelled";
   isReturned?: boolean;
+  returnOutcome?: 'in_stock' | 'reshipped';
   variantId?: string;
   productCode?: string;
   childName?: string;
