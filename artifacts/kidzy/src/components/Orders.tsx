@@ -33,6 +33,7 @@ export const Orders: React.FC = () => {
   const [govFilter, setGovFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState({ start: "", end: "" });
+  const [returnOutcomeFilter, setReturnOutcomeFilter] = useState<string>("all");
 
   // Order Creation Form State
   const [formState, setFormState] = useState<{
@@ -148,20 +149,27 @@ export const Orders: React.FC = () => {
         (o.customerPhone2 || "").includes(q) ||
         (o.items || []).some(it => (it.productName || it.name || "").toLowerCase().includes(q));
       if (!matchSearch) continue;
+      const shouldInclude = (item: OrderItem) => {
+        if (returnOutcomeFilter === "all") return true;
+        if (returnOutcomeFilter === "pending") return !item.returnOutcome;
+        if (returnOutcomeFilter === "in_stock") return item.returnOutcome === "in_stock";
+        if (returnOutcomeFilter === "reshipped") return item.returnOutcome === "reshipped";
+        return true;
+      };
       if (o.status === "returned") {
         (o.items || []).forEach((item, idx) => {
-          items.push({ order: o, item, itemIndex: idx });
+          if (shouldInclude(item)) items.push({ order: o, item, itemIndex: idx });
         });
       } else if (o.status === "returned_partial") {
         (o.items || []).forEach((item, idx) => {
-          if (item.isReturned) {
+          if (item.isReturned && shouldInclude(item)) {
             items.push({ order: o, item, itemIndex: idx });
           }
         });
       }
     }
     return items;
-  }, [orders, searchQuery]);
+  }, [orders, searchQuery, returnOutcomeFilter]);
 
   // Order Calculations
   const calculateFormTotal = () => {
@@ -1102,40 +1110,64 @@ export const Orders: React.FC = () => {
         </>
       ) : (
         <>
-          {/* Returns Stats Rows - Screenshot 4 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-2">
-              <p className="text-slate-500 font-extrabold text-xs">إجمالي القطع المرتجعة</p>
-              <p className="text-4xl font-black text-slate-800">
-                {returnedItems.length}
+          {/* Returns Dashboard + Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-2">
+              <p className="text-slate-500 font-extrabold text-[10px]">إجمالي القطع المرتجعة</p>
+              <p className="text-3xl font-black text-slate-800">{returnedItems.length}</p>
+            </div>
+            <div className="bg-amber-50/50 p-5 rounded-[2rem] border border-amber-100/50 shadow-sm text-center space-y-2">
+              <p className="text-amber-600 font-extrabold text-[10px]">⏳ معلقة (لم تحدد)</p>
+              <p className="text-3xl font-black text-amber-700">
+                {returnedItems.filter(ri => !ri.item.returnOutcome).length}
               </p>
             </div>
-
-            <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100/50 shadow-sm text-center space-y-2">
-              <p className="text-[#059669] font-extrabold text-xs">مرتجع كلي (قطع)</p>
-              <p className="text-4xl font-black text-[#059669]">
-                {returnedItems.filter(ri => ri.order.status === "returned").length}
+            <div className="bg-emerald-50/50 p-5 rounded-[2rem] border border-emerald-100/50 shadow-sm text-center space-y-2">
+              <p className="text-emerald-600 font-extrabold text-[10px]">📦 في المخزون</p>
+              <p className="text-3xl font-black text-emerald-700">
+                {returnedItems.filter(ri => ri.item.returnOutcome === 'in_stock').length}
               </p>
             </div>
-
-            <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100/50 shadow-sm text-center space-y-2">
-              <p className="text-blue-600 font-extrabold text-xs">مرتجع جزئي (قطع)</p>
-              <p className="text-4xl font-black text-[#2563eb]">
-                {returnedItems.filter(ri => ri.order.status === "returned_partial").length}
+            <div className="bg-blue-50/50 p-5 rounded-[2rem] border border-blue-100/50 shadow-sm text-center space-y-2">
+              <p className="text-blue-600 font-extrabold text-[10px]">🚚 خرج في أوردر</p>
+              <p className="text-3xl font-black text-blue-700">
+                {returnedItems.filter(ri => ri.item.returnOutcome === 'reshipped').length}
               </p>
             </div>
           </div>
 
-          {/* Search Box returns */}
-          <div className="relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="ابحث بالاسم، الموديل، كود أوردر المرتجع..."
-              className="w-full bg-white border border-slate-200/60 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold text-right outline-none shadow-xs transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
+          {/* Search + Outcome Filter */}
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="ابحث بالاسم، الموديل، كود أوردر المرتجع..."
+                className="w-full bg-white border border-slate-200/60 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold text-right outline-none shadow-xs transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap bg-slate-100/75 p-1 rounded-2xl gap-1">
+              {[
+                { key: "all", label: "الكل" },
+                { key: "pending", label: "⏳ معلقة" },
+                { key: "in_stock", label: "📦 في المخزون" },
+                { key: "reshipped", label: "🚚 خرج في أوردر" },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setReturnOutcomeFilter(opt.key)}
+                  className={`px-3 py-1.5 text-[10px] font-black rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                    returnOutcomeFilter === opt.key
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Returns Table List */}
@@ -1519,6 +1551,46 @@ export const Orders: React.FC = () => {
                             >
                               <span>{item.isReturned ? "مرتجع ↩️" : "تحديد كمرتجع 🔄"}</span>
                             </button>
+                            {item.isReturned && (
+                              <div className="flex gap-1 mt-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); 
+                                    updateCurrentOrder(o => {
+                                      const items = [...o.items];
+                                      items[idx] = { ...items[idx], returnOutcome: 'in_stock' };
+                                      return { ...o, items, lastUpdateDate: new Date().toISOString() };
+                                    });
+                                    handleReturnOutcomeChange(currentRef.id, idx, 'in_stock');
+                                  }}
+                                  className={`flex-1 text-[9px] font-black px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                                    item.returnOutcome === 'in_stock'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600'
+                                  }`}
+                                >
+                                  📦 مخزون
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); 
+                                    updateCurrentOrder(o => {
+                                      const items = [...o.items];
+                                      items[idx] = { ...items[idx], returnOutcome: 'reshipped' };
+                                      return { ...o, items, lastUpdateDate: new Date().toISOString() };
+                                    });
+                                    handleReturnOutcomeChange(currentRef.id, idx, 'reshipped');
+                                  }}
+                                  className={`flex-1 text-[9px] font-black px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                                    item.returnOutcome === 'reshipped'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                      : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-blue-50 hover:text-blue-600'
+                                  }`}
+                                >
+                                  🚚 أوردر
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* Production Stage Block */}
