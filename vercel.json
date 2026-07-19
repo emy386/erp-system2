@@ -1,7 +1,8 @@
 {
   "buildCommand": "pnpm --filter ./artifacts/kidzy run build",
-  "outputDirectory": "artifacts/kidzy/dist/public",
+  "outputDirectory": "artifacts/kidzy/dist",
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
