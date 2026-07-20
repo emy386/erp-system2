@@ -218,3 +218,45 @@ export interface Transaction {
 
 export type ProductVariant = Variant;
 export type WorkerPayment = Payment;
+
+export interface WholesalePriceBreak {
+  quantity: number;
+  price: number;
+}
+
+export interface WholesaleProduct {
+  productId: string;
+  variantId: string;
+  productName: string;
+  productCode?: string;
+  color?: string;
+  size?: string;
+  priceBreaks: WholesalePriceBreak[];
+  notes?: string;
+}
+
+export interface WholesaleOrderItem {
+  variantId: string;
+  productName: string;
+  productCode?: string;
+  color?: string;
+  size?: string;
+  quantity: number;
+  wholesalePrice: number;
+}
+
+export interface WholesaleOrder {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  items: WholesaleOrderItem[];
+  deliveryDate: string;
+  deposit: number;
+  total: number;
+  paidInFull: boolean;
+  paidInFullDate?: string;
+  notes: string;
+  creationDate: string;
+  lastUpdateDate: string;
+}

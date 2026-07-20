@@ -8,7 +8,7 @@ import { NavLink } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { 
   LayoutDashboard, ShoppingCart, Package, Scissors, 
-  Users, Receipt, LogOut, X, User as UserIcon 
+  Users, Receipt, LogOut, X, User as UserIcon, Store
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,7 +25,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: "المنتجات", icon: Package, path: "/inventory", permission: "inventory" },
     { name: "الإنتاج والورش", icon: Scissors, path: "/production", permission: "production" },
     { name: "الموظفين", icon: Users, path: "/staff", permission: "staff" },
-    { name: "الحسابات", icon: Receipt, path: "/accounts", permission: "accounts" }
+    { name: "الحسابات", icon: Receipt, path: "/accounts", permission: "accounts" },
+    { name: "شغل الجملة", icon: Store, path: "/wholesale", permission: "wholesale" },
   ];
 
   // Filter based on user permissions

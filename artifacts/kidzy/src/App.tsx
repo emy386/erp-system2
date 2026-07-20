@@ -15,10 +15,11 @@ import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
 import { Staff } from './components/Staff';
 import { Accounts } from './components/Accounts';
+import { Wholesale } from './components/Wholesale';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { motion } from 'motion/react';
 
-type Permission = 'dashboard' | 'orders' | 'inventory' | 'production' | 'staff' | 'accounts';
+type Permission = 'dashboard' | 'orders' | 'inventory' | 'production' | 'staff' | 'accounts' | 'wholesale';
 
 const ALL_PAGES: { permission: Permission; path: string }[] = [
   { permission: 'dashboard',  path: '/' },
@@ -27,6 +28,7 @@ const ALL_PAGES: { permission: Permission; path: string }[] = [
   { permission: 'production', path: '/production' },
   { permission: 'staff',      path: '/staff' },
   { permission: 'accounts',   path: '/accounts' },
+  { permission: 'wholesale',  path: '/wholesale' },
 ];
 
 function getFirstAllowedPath(perms: string[]): string {
@@ -127,6 +129,7 @@ function AppContent() {
             <Route path="/production" element={<PageTransition><ProtectedRoute permission="production"><Production /></ProtectedRoute></PageTransition>} />
             <Route path="/staff" element={<PageTransition><ProtectedRoute permission="staff"><Staff /></ProtectedRoute></PageTransition>} />
             <Route path="/accounts" element={<PageTransition><ProtectedRoute permission="accounts"><ErrorBoundary><Accounts /></ErrorBoundary></ProtectedRoute></PageTransition>} />
+            <Route path="/wholesale" element={<PageTransition><ProtectedRoute permission="wholesale"><Wholesale /></ProtectedRoute></PageTransition>} />
             <Route path="/no-access" element={
               <PageTransition>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">

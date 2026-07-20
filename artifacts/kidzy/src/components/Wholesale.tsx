@@ -1,0 +1,612 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
+import { WholesalePriceBreak, WholesaleProduct, WholesaleOrder, WholesaleOrderItem } from '../types';
+import { Search, Plus, X, Edit2, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
+
+const WS_PRICING_KEY = 'kidzy_wholesale_pricing';
+const WS_ORDERS_KEY = 'kidzy_wholesale_orders';
+
+function loadPricing(): Record<string, WholesaleProduct> {
+  try { return JSON.parse(localStorage.getItem(WS_PRICING_KEY) || '{}'); } catch { return {}; }
+}
+
+function savePricing(data: Record<string, WholesaleProduct>) {
+  localStorage.setItem(WS_PRICING_KEY, JSON.stringify(data));
+}
+
+function loadOrders(): WholesaleOrder[] {
+  try { return JSON.parse(localStorage.getItem(WS_ORDERS_KEY) || '[]'); } catch { return []; }
+}
+
+function saveOrders(data: WholesaleOrder[]) {
+  localStorage.setItem(WS_ORDERS_KEY, JSON.stringify(data));
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+export function Wholesale() {
+  const { products } = useApp();
+
+  const [activeTab, setActiveTab] = useState<'pricing' | 'orders' | 'accounts'>('pricing');
+
+  // ---- PRICING STATE ----
+  const [pricingData, setPricingData] = useState<Record<string, WholesaleProduct>>(loadPricing);
+  const [expandedVariant, setExpandedVariant] = useState<string | null>(null);
+  const [pricingSearch, setPricingSearch] = useState('');
+
+  // ---- ORDERS STATE ----
+  const [ordersData, setOrdersData] = useState<WholesaleOrder[]>(loadOrders);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [orderSearch, setOrderSearch] = useState('');
+
+  const emptyOrderForm = (): WholesaleOrder => ({
+    id: genId(),
+    customerName: '',
+    customerPhone: '',
+    customerAddress: '',
+    items: [],
+    deliveryDate: '',
+    deposit: 0,
+    total: 0,
+    paidInFull: false,
+    paidInFullDate: '',
+    notes: '',
+    creationDate: new Date().toISOString(),
+    lastUpdateDate: new Date().toISOString(),
+  });
+  const [orderForm, setOrderForm] = useState<WholesaleOrder>(emptyOrderForm());
+
+  // ---- ACCOUNTS STATE ----
+  const [accountsProductFilter, setAccountsProductFilter] = useState<string>('all');
+
+  // ---- PERSIST ----
+  useEffect(() => { savePricing(pricingData); }, [pricingData]);
+  useEffect(() => { saveOrders(ordersData); }, [ordersData]);
+
+  // ---- COMPUTED ----
+  const allVariants = useMemo(() => {
+    const list: { productId: string; productName: string; productCode: string; variantId: string; color: string; size: string; totalCost: number; sellingPrice: number }[] = [];
+    for (const p of products) {
+      for (const v of p.variants || []) {
+        list.push({
+          productId: p.id,
+          productName: p.name,
+          productCode: p.code,
+          variantId: v.id,
+          color: v.color,
+          size: v.size,
+          totalCost: p.totalCost,
+          sellingPrice: p.sellingPrice,
+        });
+      }
+    }
+    return list;
+  }, [products]);
+
+  const filteredVariants = useMemo(() => {
+    const q = pricingSearch.toLowerCase().trim();
+    if (!q) return allVariants;
+    return allVariants.filter(v =>
+      v.productName.toLowerCase().includes(q) ||
+      v.productCode.toLowerCase().includes(q) ||
+      v.color.toLowerCase().includes(q) ||
+      v.size.toLowerCase().includes(q)
+    );
+  }, [allVariants, pricingSearch]);
+
+  const filteredOrders = useMemo(() => {
+    const q = orderSearch.toLowerCase().trim();
+    if (!q) return ordersData;
+    return ordersData.filter(o =>
+      o.customerName.toLowerCase().includes(q) ||
+      o.customerPhone.includes(q) ||
+      o.items.some(it => it.productName.toLowerCase().includes(q))
+    );
+  }, [ordersData, orderSearch]);
+
+  const accountsFilteredOrders = useMemo(() => {
+    if (accountsProductFilter === 'all') return ordersData;
+    return ordersData.filter(o =>
+      o.items.some(it => it.variantId === accountsProductFilter)
+    );
+  }, [ordersData, accountsProductFilter]);
+
+  // ---- PRICING HANDLERS ----
+  const getPriceBreaks = (variantId: string): WholesalePriceBreak[] =>
+    pricingData[variantId]?.priceBreaks || [];
+
+  const setPriceBreaks = (variantId: string, breaks: WholesalePriceBreak[]) => {
+    setPricingData(prev => {
+      const existing = prev[variantId];
+      if (breaks.length === 0 && !existing) return prev;
+      const updated = { ...prev };
+      if (breaks.length === 0) {
+        delete updated[variantId];
+      } else {
+        updated[variantId] = {
+          ...(existing || { productId: '', variantId, productName: '', productCode: '', color: '', size: '', priceBreaks: [] }),
+          priceBreaks: breaks,
+        };
+      }
+      return updated;
+    });
+  };
+
+  const handleAddBreak = (variantId: string) => {
+    const breaks = getPriceBreaks(variantId);
+    const lastQty = breaks.length > 0 ? breaks[breaks.length - 1].quantity : 0;
+    setPriceBreaks(variantId, [...breaks, { quantity: lastQty + 10, price: 0 }]);
+  };
+
+  const handleRemoveBreak = (variantId: string, idx: number) => {
+    const breaks = getPriceBreaks(variantId).filter((_, i) => i !== idx);
+    setPriceBreaks(variantId, breaks);
+  };
+
+  const handleBreakChange = (variantId: string, idx: number, field: 'quantity' | 'price', value: number) => {
+    const breaks = getPriceBreaks(variantId).map((b, i) => i === idx ? { ...b, [field]: value } : b);
+    setPriceBreaks(variantId, breaks);
+  };
+
+  const handleUpdatePricingMeta = (variantId: string, vi: typeof allVariants[0]) => {
+    setPricingData(prev => {
+      const existing = prev[variantId];
+      if (!existing) return prev;
+      return { ...prev, [variantId]: { ...existing, productId: vi.productId, productName: vi.productName, productCode: vi.productCode, color: vi.color, size: vi.size } };
+    });
+  };
+
+  // ---- ORDER HANDLERS ----
+  const handleOpenNewOrder = () => {
+    setEditingOrderId(null);
+    setOrderForm(emptyOrderForm());
+    setShowOrderForm(true);
+  };
+
+  const handleOpenEditOrder = (o: WholesaleOrder) => {
+    setEditingOrderId(o.id);
+    setOrderForm({ ...o });
+    setShowOrderForm(true);
+  };
+
+  const handleSaveOrder = () => {
+    const now = new Date().toISOString();
+    const order = { ...orderForm, lastUpdateDate: now };
+    if (!order.creationDate) order.creationDate = now;
+    const total = order.items.reduce((sum, it) => sum + it.wholesalePrice * it.quantity, 0);
+    order.total = total;
+    if (editingOrderId) {
+      setOrdersData(prev => prev.map(o => o.id === editingOrderId ? order : o));
+    } else {
+      setOrdersData(prev => [order, ...prev]);
+    }
+    setShowOrderForm(false);
+    setEditingOrderId(null);
+  };
+
+  const handleDeleteOrder = (id: string) => {
+    if (confirm('🚨 هل أنت متأكد من حذف طلب الجملة هذا؟')) {
+      setOrdersData(prev => prev.filter(o => o.id !== id));
+    }
+  };
+
+  const handleAddOrderItem = () => {
+    setOrderForm(prev => ({
+      ...prev,
+      items: [...prev.items, { variantId: '', productName: '', productCode: '', color: '', size: '', quantity: 1, wholesalePrice: 0 }],
+    }));
+  };
+
+  const handleRemoveOrderItem = (idx: number) => {
+    setOrderForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
+  };
+
+  const handleOrderItemChange = (idx: number, field: keyof WholesaleOrderItem, value: string | number) => {
+    setOrderForm(prev => {
+      const items = [...prev.items];
+      items[idx] = { ...items[idx], [field]: value };
+      if (field === 'variantId') {
+        const v = allVariants.find(v => v.variantId === value);
+        if (v) {
+          items[idx].productName = v.productName;
+          items[idx].productCode = v.productCode;
+          items[idx].color = v.color;
+          items[idx].size = v.size;
+        }
+      }
+      return { ...prev, items };
+    });
+  };
+
+  // ---- ACCOUNTS ----
+  const accountsStats = useMemo(() => {
+    const orders = accountsFilteredOrders;
+    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+    const totalDeposits = orders.reduce((s, o) => s + o.deposit, 0);
+    const totalRemaining = orders.reduce((s, o) => s + Math.max(0, o.total - o.deposit), 0);
+    const paidInFullCount = orders.filter(o => o.paidInFull).length;
+    const pendingCount = orders.filter(o => !o.paidInFull).length;
+    return { totalRevenue, totalDeposits, totalRemaining, paidInFullCount, pendingCount, totalOrders: orders.length };
+  }, [accountsFilteredOrders]);
+
+  const productOptionsForFilter = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { variantId: string; label: string }[] = [];
+    for (const o of ordersData) {
+      for (const it of o.items) {
+        if (!seen.has(it.variantId)) {
+          seen.add(it.variantId);
+          list.push({ variantId: it.variantId, label: `${it.productName} (${it.color || ''}/${it.size || ''})` });
+        }
+      }
+    }
+    return list;
+  }, [ordersData]);
+
+  // ---- RENDER ----
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800">شغل الجملة 📦</h2>
+          <p className="text-xs text-slate-400 font-bold mt-1">تسعير و طلبات و حسابات الجملة</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap bg-slate-100 p-1 rounded-3xl gap-1">
+        <button onClick={() => setActiveTab('pricing')} className={`flex-1 min-w-[120px] py-3 text-xs md:text-sm font-black rounded-2xl transition-all ${activeTab === 'pricing' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>💰 تسعير الجملة</button>
+        <button onClick={() => setActiveTab('orders')} className={`flex-1 min-w-[120px] py-3 text-xs md:text-sm font-black rounded-2xl transition-all ${activeTab === 'orders' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>📋 طلبات الجملة</button>
+        <button onClick={() => setActiveTab('accounts')} className={`flex-1 min-w-[120px] py-3 text-xs md:text-sm font-black rounded-2xl transition-all ${activeTab === 'accounts' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>📊 حسابات الجملة</button>
+      </div>
+
+      {/* ==================== TAB 1: PRICING ==================== */}
+      {activeTab === 'pricing' && (
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+            <div className="relative">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input type="text" placeholder="ابحث باسم المنتج، الكود، اللون، أو المقاس..." className="w-full bg-slate-50 border-none rounded-2xl py-3 pr-11 pl-4 text-sm font-bold focus:ring-2 focus:ring-indigo-100 transition-all text-right" value={pricingSearch} onChange={e => setPricingSearch(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-extrabold text-slate-800 text-sm">تسعير الجملة حسب الكمية</h3>
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl">{filteredVariants.length} منتج</span>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {filteredVariants.length === 0 ? (
+                <div className="p-12 text-center text-xs font-bold text-slate-400">لا توجد منتجات مطابقة</div>
+              ) : (
+                filteredVariants.map(v => {
+                  const breaks = getPriceBreaks(v.variantId);
+                  const isExpanded = expandedVariant === v.variantId;
+                  return (
+                    <div key={v.variantId} className="transition-all">
+                      <div className="flex items-center justify-between p-4 hover:bg-slate-50/50 cursor-pointer" onClick={() => setExpandedVariant(isExpanded ? null : v.variantId)}>
+                        <div className="flex items-center gap-3 text-right">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${breaks.length > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'}`}>
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800">{v.productName}</p>
+                            <p className="text-[10px] text-slate-400 font-bold font-mono">{v.productCode} • {v.size || 'عادي'} / {v.color || 'عادي'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] text-slate-400 font-bold">التكلفة: {v.totalCost} ج.م</span>
+                          {breaks.length > 0 && (
+                            <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg font-black">{breaks.length} شريحة</span>
+                          )}
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pr-16">
+                          {breaks.map((b, idx) => (
+                            <div key={idx} className="flex items-center gap-2 mb-2">
+                              <input type="number" placeholder="الكمية من" value={b.quantity} onChange={e => handleBreakChange(v.variantId, idx, 'quantity', Number(e.target.value))} className="w-24 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
+                              <span className="text-[10px] text-slate-400 font-bold">قطعة فأكثر</span>
+                              <input type="number" placeholder="السعر" value={b.price} onChange={e => handleBreakChange(v.variantId, idx, 'price', Number(e.target.value))} className="w-28 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
+                              <span className="text-[10px] text-slate-400 font-bold">ج.م/قطعة</span>
+                              {b.price > 0 && v.totalCost > 0 && (
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${b.price > v.totalCost ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                  ربح {((b.price - v.totalCost) * b.quantity).toFixed(0)} ج.م
+                                </span>
+                              )}
+                              <button onClick={() => handleRemoveBreak(v.variantId, idx)} className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"><X size={14} /></button>
+                            </div>
+                          ))}
+                          <button onClick={() => handleAddBreak(v.variantId)} className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all cursor-pointer">+ إضافة شريحة سعر</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== TAB 2: ORDERS ==================== */}
+      {activeTab === 'orders' && (
+        <div className="space-y-6">
+          {/* Table + Search */}
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input type="text" placeholder="ابحث باسم العميل، رقم الهاتف، المنتج..." className="w-full bg-white border border-slate-200/60 rounded-2xl py-3 pr-11 pl-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all text-right" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
+            </div>
+            <button onClick={handleOpenNewOrder} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-black transition-all shadow-lg shadow-blue-100 cursor-pointer text-sm">
+              <Plus size={18} /> طلب جملة جديد
+            </button>
+          </div>
+
+          {/* Orders Table */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-extrabold text-slate-800 text-sm">طلبات الجملة</h3>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl">{ordersData.length} طلب</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className="bg-slate-100/50 text-slate-500 font-extrabold border-b border-slate-100">
+                    <th className="p-4">العميل</th>
+                    <th className="p-4">المنتجات</th>
+                    <th className="p-4">الإجمالي</th>
+                    <th className="p-4">المدفوع</th>
+                    <th className="p-4">المتبقي</th>
+                    <th className="p-4">تاريخ التسليم</th>
+                    <th className="p-4 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 text-slate-700 font-bold">
+                  {filteredOrders.length === 0 ? (
+                    <tr><td colSpan={7} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات جملة</td></tr>
+                  ) : (
+                    filteredOrders.map(o => {
+                      const remaining = Math.max(0, o.total - o.deposit);
+                      return (
+                        <tr key={o.id} className="hover:bg-slate-50/50 transition-all">
+                          <td className="p-4">
+                            <div className="flex flex-col">
+                              <span className="font-extrabold text-slate-800">{o.customerName}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">{o.customerPhone}</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex flex-col gap-0.5">
+                              {o.items.map((it, idx) => (
+                                <span key={idx} className="text-[10px] text-slate-600">{it.productName} x{it.quantity} @ {it.wholesalePrice}ج</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-4 font-black">{o.total.toFixed(0)} ج</td>
+                          <td className="p-4">
+                            <span className={`font-black ${o.paidInFull ? 'text-emerald-600' : 'text-amber-600'}`}>{o.deposit.toFixed(0)} ج</span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`font-black ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{remaining.toFixed(0)} ج</span>
+                          </td>
+                          <td className="p-4 text-slate-500">{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-GB') : '—'}</td>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={() => handleOpenEditOrder(o)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"><Edit2 size={14} /></button>
+                              <button onClick={() => handleDeleteOrder(o.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"><Trash2 size={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== TAB 3: ACCOUNTS ==================== */}
+      {activeTab === 'accounts' && (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-2">
+              <p className="text-slate-500 font-extrabold text-[10px]">إجمالي الطلبات</p>
+              <p className="text-2xl font-black text-slate-800">{accountsStats.totalOrders}</p>
+            </div>
+            <div className="bg-emerald-50/50 p-5 rounded-[2rem] border border-emerald-100/50 shadow-sm text-center space-y-2">
+              <p className="text-emerald-600 font-extrabold text-[10px]">إجمالي الإيرادات</p>
+              <p className="text-2xl font-black text-emerald-700">{accountsStats.totalRevenue.toFixed(0)} ج</p>
+            </div>
+            <div className="bg-blue-50/50 p-5 rounded-[2rem] border border-blue-100/50 shadow-sm text-center space-y-2">
+              <p className="text-blue-600 font-extrabold text-[10px]">إجمالي المدفوع</p>
+              <p className="text-2xl font-black text-blue-700">{accountsStats.totalDeposits.toFixed(0)} ج</p>
+            </div>
+            <div className="bg-amber-50/50 p-5 rounded-[2rem] border border-amber-100/50 shadow-sm text-center space-y-2">
+              <p className="text-amber-600 font-extrabold text-[10px]">المتبقي</p>
+              <p className="text-2xl font-black text-amber-700">{accountsStats.totalRemaining.toFixed(0)} ج</p>
+            </div>
+            <div className={`${accountsStats.pendingCount > 0 ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'} p-5 rounded-[2rem] border shadow-sm text-center space-y-2`}>
+              <p className={`font-extrabold text-[10px] ${accountsStats.pendingCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>مدفوع بالكامل</p>
+              <p className={`text-2xl font-black ${accountsStats.pendingCount > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{accountsStats.paidInFullCount}/{accountsStats.totalOrders}</p>
+            </div>
+          </div>
+
+          {/* Product Filter */}
+          <div className="flex flex-wrap bg-white p-3 rounded-3xl border border-slate-100 shadow-sm gap-2">
+            <span className="text-[10px] text-slate-400 font-bold self-center ml-2">تصفية حسب المنتج:</span>
+            <button onClick={() => setAccountsProductFilter('all')} className={`px-3 py-1.5 text-[10px] font-black rounded-xl transition-all cursor-pointer ${accountsProductFilter === 'all' ? 'bg-slate-800 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>الكل</button>
+            {productOptionsForFilter.map(opt => (
+              <button key={opt.variantId} onClick={() => setAccountsProductFilter(opt.variantId)} className={`px-3 py-1.5 text-[10px] font-black rounded-xl transition-all cursor-pointer ${accountsProductFilter === opt.variantId ? 'bg-slate-800 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{opt.label}</button>
+            ))}
+          </div>
+
+          {/* Per-Product Breakdown */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-800 text-sm">تفصيل حسابات الجملة</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className="bg-slate-100/50 text-slate-500 font-extrabold border-b border-slate-100">
+                    <th className="p-4">العميل</th>
+                    <th className="p-4">المنتجات</th>
+                    <th className="p-4">الإجمالي</th>
+                    <th className="p-4">المدفوع</th>
+                    <th className="p-4">المتبقي</th>
+                    <th className="p-4">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 text-slate-700 font-bold">
+                  {accountsFilteredOrders.length === 0 ? (
+                    <tr><td colSpan={6} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات</td></tr>
+                  ) : (
+                    accountsFilteredOrders.map(o => {
+                      const remaining = Math.max(0, o.total - o.deposit);
+                      return (
+                        <tr key={o.id} className="hover:bg-slate-50/50 transition-all">
+                          <td className="p-4">
+                            <span className="font-extrabold text-slate-800">{o.customerName}</span>
+                          </td>
+                          <td className="p-4">
+                            {o.items.map((it, idx) => (
+                              <div key={idx} className="text-[10px] text-slate-600">{it.productName} x{it.quantity} @ {it.wholesalePrice}ج</div>
+                            ))}
+                          </td>
+                          <td className="p-4 font-black">{o.total.toFixed(0)} ج</td>
+                          <td className="p-4 font-black text-blue-600">{o.deposit.toFixed(0)} ج</td>
+                          <td className="p-4">
+                            <span className={`font-black ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{remaining.toFixed(0)} ج</span>
+                          </td>
+                          <td className="p-4">
+                            {o.paidInFull ? (
+                              <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">مدفوع بالكامل ✅</span>
+                            ) : (
+                              <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-amber-50 text-amber-700">متبقي {remaining.toFixed(0)} ج</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== ORDER FORM MODAL ==================== */}
+      {showOrderForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-2xl rounded-[2rem] overflow-hidden shadow-2xl text-right max-h-[95vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
+              <h3 className="text-lg font-black text-slate-800">{editingOrderId ? 'تعديل طلب جملة' : 'طلب جملة جديد'} 📋</h3>
+              <button onClick={() => setShowOrderForm(false)} className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 font-bold transition-all cursor-pointer">✕</button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              {/* Customer Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">اسم العميل</label>
+                  <input type="text" value={orderForm.customerName} onChange={e => setOrderForm(prev => ({ ...prev, customerName: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 text-right" placeholder="اسم العميل" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">رقم الهاتف</label>
+                  <input type="text" value={orderForm.customerPhone} onChange={e => setOrderForm(prev => ({ ...prev, customerPhone: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 text-right" placeholder="رقم الهاتف" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">العنوان</label>
+                  <input type="text" value={orderForm.customerAddress} onChange={e => setOrderForm(prev => ({ ...prev, customerAddress: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 text-right" placeholder="العنوان" />
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[10px] text-slate-400 font-black">المنتجات المطلوبة</span>
+                  <button onClick={handleAddOrderItem} className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all cursor-pointer">+ إضافة منتج</button>
+                </div>
+                {orderForm.items.map((item, idx) => (
+                  <div key={idx} className="bg-slate-50/80 rounded-2xl p-4 mb-3 border border-slate-100">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[9px] text-slate-400 font-black">منتج {idx + 1}</span>
+                      {orderForm.items.length > 1 && (
+                        <button onClick={() => handleRemoveOrderItem(idx)} className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"><X size={14} /></button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-[9px] text-slate-400 font-black block mb-1">المنتج</label>
+                        <select value={item.variantId} onChange={e => handleOrderItemChange(idx, 'variantId', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-[11px] font-bold outline-none cursor-pointer text-right">
+                          <option value="">اختر المنتج...</option>
+                          {allVariants.map(v => (
+                            <option key={v.variantId} value={v.variantId}>{v.productName} ({v.color || 'عادي'} / {v.size || 'عادي'})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-slate-400 font-black block mb-1">الكمية</label>
+                        <input type="number" min="1" value={item.quantity} onChange={e => handleOrderItemChange(idx, 'quantity', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-[11px] font-bold outline-none text-center" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-slate-400 font-black block mb-1">سعر القطعة</label>
+                        <input type="number" min="0" value={item.wholesalePrice} onChange={e => handleOrderItemChange(idx, 'wholesalePrice', Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-[11px] font-bold outline-none text-center" />
+                      </div>
+                    </div>
+                    <div className="mt-2 text-[10px] text-slate-500 font-black text-left">المجموع: {(item.wholesalePrice * item.quantity).toFixed(0)} ج.م</div>
+                  </div>
+                ))}
+                {orderForm.items.length > 0 && (
+                  <div className="text-left text-sm font-black text-slate-800 pt-2 border-t border-slate-200">
+                    الإجمالي الكلي: {orderForm.items.reduce((s, it) => s + it.wholesalePrice * it.quantity, 0).toFixed(0)} ج.م
+                  </div>
+                )}
+              </div>
+
+              {/* Payment & Delivery */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">تاريخ التسليم</label>
+                  <input type="date" value={orderForm.deliveryDate} onChange={e => setOrderForm(prev => ({ ...prev, deliveryDate: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">قيمة الديبوزيت المدفوع</label>
+                  <input type="number" min="0" value={orderForm.deposit} onChange={e => setOrderForm(prev => ({ ...prev, deposit: Number(e.target.value) }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 text-center" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={orderForm.paidInFull} onChange={e => setOrderForm(prev => ({ ...prev, paidInFull: e.target.checked, paidInFullDate: e.target.checked ? new Date().toISOString() : '' }))} className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                    <span className="text-xs font-black text-slate-700">تم الدفع بالكامل</span>
+                  </label>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">ملاحظات</label>
+                  <textarea value={orderForm.notes} onChange={e => setOrderForm(prev => ({ ...prev, notes: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 text-right resize-none" rows={2} placeholder="ملاحظات..." />
+                </div>
+              </div>
+
+              {orderForm.items.length > 0 && (
+                <div className="bg-slate-50 rounded-2xl p-4 space-y-1 text-xs font-black">
+                  <div className="flex justify-between"><span>الإجمالي:</span><span>{orderForm.items.reduce((s, it) => s + it.wholesalePrice * it.quantity, 0).toFixed(0)} ج.م</span></div>
+                  <div className="flex justify-between text-blue-600"><span>المدفوع:</span><span>{orderForm.deposit.toFixed(0)} ج.م</span></div>
+                  <div className="flex justify-between text-rose-600 border-t border-slate-200 pt-1"><span>المتبقي:</span><span>{Math.max(0, orderForm.items.reduce((s, it) => s + it.wholesalePrice * it.quantity, 0) - orderForm.deposit).toFixed(0)} ج.م</span></div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-slate-100 flex justify-between shrink-0">
+              <button onClick={() => setShowOrderForm(false)} className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-500 font-black text-xs hover:bg-slate-50 transition-all cursor-pointer">إلغاء</button>
+              <button onClick={handleSaveOrder} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-black text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 cursor-pointer flex items-center gap-2"><Save size={14} /> حفظ الطلب</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
