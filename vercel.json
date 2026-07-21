@@ -1,4 +1,6 @@
 {
+  "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter ./artifacts/kidzy run build",
-  "outputDirectory": "artifacts/kidzy/dist"
+  "outputDirectory": "artifacts/kidzy/dist",
+  "framework": "vite"
 }
