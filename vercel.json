@@ -2,5 +2,8 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter ./artifacts/kidzy run build",
   "outputDirectory": "artifacts/kidzy/dist",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/((?!assets/|favicon\\.ico|icon\\.svg|manifest\\.webmanifest|sw\\.js|workbox-.*).*)", "destination": "/index.html" }
+  ]
 }
