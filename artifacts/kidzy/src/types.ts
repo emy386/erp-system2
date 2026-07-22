@@ -22,6 +22,8 @@ export interface Product {
   extraCost: number;
   totalCost: number;
   sellingPrice: number;
+  retailPrice: number;
+  wholesalePrice: number;
   expectedProfit: number;
   variants: Variant[];
 }

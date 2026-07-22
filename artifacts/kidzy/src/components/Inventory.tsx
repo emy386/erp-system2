@@ -32,7 +32,7 @@ export function Inventory() {
                      (editingProduct.packagingCost || 0) + 
                      (editingProduct.marketingCost || 0) + 
                      (editingProduct.extraCost || 0);
-    const expectedProfit = (editingProduct.sellingPrice || 0) - totalCost;
+    const expectedProfit = (editingProduct.retailPrice || editingProduct.sellingPrice || 0) - totalCost;
 
     const finalProduct = {
       ...editingProduct,
@@ -72,6 +72,8 @@ export function Inventory() {
               marketingCost: 0,
               extraCost: 0,
               sellingPrice: 0,
+              retailPrice: 0,
+              wholesalePrice: 0,
               variants: []
             });
             setIsModalOpen(true);
@@ -136,10 +138,17 @@ export function Inventory() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-6 border-t border-slate-50 pt-3 sm:pt-0 sm:border-0">
-                  <div className="text-right sm:text-left">
-                    <p className="text-[10px] text-slate-400 font-black">سعر البيع</p>
-                    <p className="text-xs sm:text-sm font-black text-blue-600">{product.sellingPrice} ج.م</p>
+                <div className="flex items-center justify-between sm:justify-end gap-4 border-t border-slate-50 pt-3 sm:pt-0 sm:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <p className="text-[9px] text-blue-500 font-black">قطاعي</p>
+                      <p className="text-xs font-black text-blue-600">{product.retailPrice || product.sellingPrice || 0} ج.م</p>
+                    </div>
+                    <div className="w-px h-6 bg-slate-200"></div>
+                    <div className="text-center">
+                      <p className="text-[9px] text-emerald-500 font-black">جملة</p>
+                      <p className="text-xs font-black text-emerald-600">{product.wholesalePrice || 0} ج.م</p>
+                    </div>
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-slate-100/80 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors shrink-0">
                     {expandedProduct === product.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -151,7 +160,7 @@ export function Inventory() {
                 <div className="p-4 bg-slate-50/30 border-t border-slate-50 space-y-4 animate-in fade-in slide-in-from-top-2 text-right">
                   {/* Detailed Costs */}
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm text-right">
                         <p className="text-[10px] text-slate-400 font-black mb-1">تكلفة الخامات</p>
                         <p className="text-sm font-black text-slate-700">{product.materialsCost} ج.م</p>
@@ -164,9 +173,13 @@ export function Inventory() {
                         <p className="text-[10px] text-slate-400 font-black mb-1">إجمالي التكلفة</p>
                         <p className="text-sm font-black text-slate-700">{product.totalCost} ج.م</p>
                       </div>
-                      <div className="bg-white p-3 rounded-2xl border border-emerald-100 shadow-sm text-right">
-                        <p className="text-[10px] text-emerald-500 font-black mb-1">صافي الربح المتوقع</p>
-                        <p className="text-sm font-black text-emerald-600">{product.expectedProfit} ج.م</p>
+                      <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 shadow-sm text-right">
+                        <p className="text-[10px] text-blue-500 font-black mb-1">سعر القطاعي</p>
+                        <p className="text-sm font-black text-blue-600">{product.retailPrice || product.sellingPrice || 0} ج.م</p>
+                      </div>
+                      <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100 shadow-sm text-right">
+                        <p className="text-[10px] text-emerald-500 font-black mb-1">سعر الجملة</p>
+                        <p className="text-sm font-black text-emerald-600">{product.wholesalePrice || 0} ج.م</p>
                       </div>
                     </div>
 
@@ -315,20 +328,35 @@ export function Inventory() {
                     />
                   </div>
                 </div>
-                <div className="pt-3 border-t border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="w-full sm:w-auto">
-                    <label className="text-xs font-black text-slate-400 block mb-1">سعر البيع المقترح</label>
-                    <input 
-                      type="number"
-                      className="bg-white border-2 border-blue-200 rounded-xl p-3 text-lg font-black text-blue-600 w-full sm:w-32 font-sans text-right sm:text-center outline-none"
-                      value={editingProduct.sellingPrice || ''}
-                      onFocus={e => e.target.select()}
-                      onChange={e => setEditingProduct({...editingProduct, sellingPrice: parseFloat(e.target.value) || 0})}
-                    />
+                <div className="pt-3 border-t border-blue-100 flex flex-col gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-blue-600 block">سعر البيع القطاعي</label>
+                      <input 
+                        type="number"
+                        className="w-full bg-white border-2 border-blue-200 rounded-xl p-3 text-lg font-black text-blue-600 font-sans text-right outline-none"
+                        value={editingProduct.retailPrice || ''}
+                        onFocus={e => e.target.select()}
+                        onChange={e => setEditingProduct({...editingProduct, retailPrice: parseFloat(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-emerald-600 block">سعر البيع بالجملة</label>
+                      <input 
+                        type="number"
+                        className="w-full bg-white border-2 border-emerald-200 rounded-xl p-3 text-lg font-black text-emerald-600 font-sans text-right outline-none"
+                        value={editingProduct.wholesalePrice || ''}
+                        onFocus={e => e.target.select()}
+                        onChange={e => setEditingProduct({...editingProduct, wholesalePrice: parseFloat(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
-                  <div className="text-right sm:text-left space-y-1 font-sans">
+                  <div className="text-right space-y-1 font-sans bg-white/50 p-3 rounded-2xl border border-dashed border-slate-200">
                     <p className="text-xs font-black text-slate-400">إجمالي التكلفة: <span className="text-slate-800 font-bold">{(editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0)} ج.م</span></p>
-                    <p className="text-sm font-black text-emerald-600">الربح المتوقع: <span className="text-lg">{(editingProduct.sellingPrice || 0) - ((editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0))} ج.م</span></p>
+                    <p className="text-xs font-black text-blue-500">ربح القطاعي: <span className="font-bold">{(editingProduct.retailPrice || 0) - ((editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0))} ج.م</span></p>
+                    <p className="text-xs font-black text-emerald-500">ربح الجملة: <span className="font-bold">{(editingProduct.wholesalePrice || 0) - ((editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0))} ج.م</span></p>
                   </div>
                 </div>
               </div>
