@@ -185,8 +185,8 @@ export function Inventory() {
                         <p className="text-[10px] text-emerald-500 font-black mb-1">أسعار الجملة</p>
                         {(product.wholesalePriceBreaks || []).length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {(product.wholesalePriceBreaks || []).sort((a, b) => a.quantity - b.quantity).map((brk, i) => (
-                              <span key={i} className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">{brk.quantity}+ = {brk.price} ج</span>
+                            {(product.wholesalePriceBreaks || []).sort((a, b) => a.from - b.from).map((brk, i) => (
+                              <span key={i} className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">{brk.from}-{brk.to} = {brk.price} ج</span>
                             ))}
                           </div>
                         ) : (
@@ -361,10 +361,14 @@ export function Inventory() {
                       <label className="text-xs font-black text-emerald-600 block">أسعار الجملة حسب الكمية</label>
                       <button 
                         type="button"
-                        onClick={() => setEditingProduct({
-                          ...editingProduct, 
-                          wholesalePriceBreaks: [...(editingProduct.wholesalePriceBreaks || []), { quantity: 0, price: 0 }]
-                        })}
+                        onClick={() => {
+                          const breaks = editingProduct.wholesalePriceBreaks || [];
+                          const lastTo = breaks.length > 0 ? breaks[breaks.length - 1].to : 0;
+                          setEditingProduct({
+                            ...editingProduct, 
+                            wholesalePriceBreaks: [...breaks, { from: lastTo + 1, to: lastTo + 50, price: 0 }]
+                          });
+                        }}
                         className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-all"
                       >
                         + إضافة شريحة سعر
@@ -373,65 +377,83 @@ export function Inventory() {
                     {(editingProduct.wholesalePriceBreaks || []).length === 0 && (
                       <p className="text-[11px] text-slate-400 font-bold text-center py-3 bg-emerald-50/30 rounded-2xl border border-dashed border-emerald-100">لم تُحدد أسعار جملة بعد - أضيفي شريحة سعر لكل كمية</p>
                     )}
-                    {(editingProduct.wholesalePriceBreaks || []).map((brk, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100">
-                        <div className="flex-1 flex items-center gap-2">
-                          <input 
-                            type="number" 
-                            min="1"
-                            className="w-24 bg-white border border-emerald-200 rounded-xl py-2 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-emerald-100"
-                            value={brk.quantity || ''}
-                            onFocus={e => e.target.select()}
-                            onChange={e => {
-                              const newBreaks = [...(editingProduct.wholesalePriceBreaks || [])];
-                              newBreaks[idx].quantity = parseInt(e.target.value) || 0;
+                    {(editingProduct.wholesalePriceBreaks || []).map((brk, idx) => {
+                      const totalCost = (editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0);
+                      const profit = brk.price - totalCost;
+                      return (
+                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100">
+                          <div className="flex-1 flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] text-slate-500 font-bold">من</span>
+                            <input 
+                              type="number" 
+                              min="1"
+                              className="w-16 bg-white border border-emerald-200 rounded-xl py-2 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-emerald-100"
+                              value={brk.from || ''}
+                              onFocus={e => e.target.select()}
+                              onChange={e => {
+                                const newBreaks = [...(editingProduct.wholesalePriceBreaks || [])];
+                                newBreaks[idx].from = parseInt(e.target.value) || 0;
+                                setEditingProduct({...editingProduct, wholesalePriceBreaks: newBreaks});
+                              }}
+                            />
+                            <span className="text-[10px] text-slate-500 font-bold">لى</span>
+                            <input 
+                              type="number" 
+                              min="1"
+                              className="w-16 bg-white border border-emerald-200 rounded-xl py-2 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-emerald-100"
+                              value={brk.to || ''}
+                              onFocus={e => e.target.select()}
+                              onChange={e => {
+                                const newBreaks = [...(editingProduct.wholesalePriceBreaks || [])];
+                                newBreaks[idx].to = parseInt(e.target.value) || 0;
+                                setEditingProduct({...editingProduct, wholesalePriceBreaks: newBreaks});
+                              }}
+                            />
+                            <span className="text-[10px] text-slate-500 font-bold">قطعة</span>
+                            <span className="text-[10px] text-slate-400 font-bold mx-1">|</span>
+                            <input 
+                              type="number" 
+                              min="0"
+                              className="w-24 bg-white border border-emerald-200 rounded-xl py-2 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-emerald-100"
+                              value={brk.price || ''}
+                              onFocus={e => e.target.select()}
+                              onChange={e => {
+                                const newBreaks = [...(editingProduct.wholesalePriceBreaks || [])];
+                                newBreaks[idx].price = parseFloat(e.target.value) || 0;
+                                setEditingProduct({...editingProduct, wholesalePriceBreaks: newBreaks});
+                              }}
+                              placeholder="السعر"
+                            />
+                            <span className="text-[10px] text-slate-500 font-bold">ج.م/قطعة</span>
+                            {brk.price > 0 && totalCost > 0 && (
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${profit > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                ربح {profit.toFixed(0)} ج/قطعة
+                              </span>
+                            )}
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newBreaks = (editingProduct.wholesalePriceBreaks || []).filter((_, i) => i !== idx);
                               setEditingProduct({...editingProduct, wholesalePriceBreaks: newBreaks});
                             }}
-                            placeholder="من"
-                          />
-                          <span className="text-[10px] text-slate-400 font-bold">قطعة فأكثر</span>
-                          <input 
-                            type="number" 
-                            min="0"
-                            className="w-28 bg-white border border-emerald-200 rounded-xl py-2 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-emerald-100"
-                            value={brk.price || ''}
-                            onFocus={e => e.target.select()}
-                            onChange={e => {
-                              const newBreaks = [...(editingProduct.wholesalePriceBreaks || [])];
-                              newBreaks[idx].price = parseFloat(e.target.value) || 0;
-                              setEditingProduct({...editingProduct, wholesalePriceBreaks: newBreaks});
-                            }}
-                            placeholder="السعر"
-                          />
-                          <span className="text-[10px] text-slate-400 font-bold">ج.م/قطعة</span>
-                          {brk.price > 0 && (
-                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${brk.price > (editingProduct.totalCost || 0) ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                              ربح {brk.price - (editingProduct.totalCost || 0)} ج
-                            </span>
-                          )}
+                            className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all self-center"
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            const newBreaks = (editingProduct.wholesalePriceBreaks || []).filter((_, i) => i !== idx);
-                            setEditingProduct({...editingProduct, wholesalePriceBreaks: newBreaks});
-                          }}
-                          className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div className="text-right space-y-1 font-sans bg-white/50 p-3 rounded-2xl border border-dashed border-slate-200">
                     <p className="text-xs font-black text-slate-400">إجمالي التكلفة: <span className="text-slate-800 font-bold">{(editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0)} ج.م</span></p>
-                    <p className="text-xs font-black text-blue-500">ربح القطاعي: <span className="font-bold">{(editingProduct.retailPrice || 0) - ((editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0))} ج.م</span></p>
+                    <p className="text-xs font-black text-blue-500">ربح القطاعي: <span className="font-bold">{(editingProduct.retailPrice || 0) - ((editingProduct.materialsCost || 0) + (editingProduct.workshopFee || 0) + (editingProduct.packagingCost || 0) + (editingProduct.marketingCost || 0) + (editingProduct.extraCost || 0))} ج.م/قطعة</span></p>
                     {(editingProduct.wholesalePriceBreaks || []).length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {(editingProduct.wholesalePriceBreaks || []).sort((a, b) => a.quantity - b.quantity).map((brk, idx) => (
+                        {(editingProduct.wholesalePriceBreaks || []).sort((a, b) => a.from - b.from).map((brk, idx) => (
                           <span key={idx} className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-600">
-                            {brk.quantity}+ قطعة = {brk.price} ج
+                            {brk.from}-{brk.to} قطعة = {brk.price} ج.م
                           </span>
                         ))}
                       </div>

@@ -222,7 +222,8 @@ export type ProductVariant = Variant;
 export type WorkerPayment = Payment;
 
 export interface WholesalePriceBreak {
-  quantity: number;
+  from: number;
+  to: number;
   price: number;
 }
 

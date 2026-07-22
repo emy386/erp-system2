@@ -135,8 +135,8 @@ export function Wholesale() {
 
   const handleAddBreak = (variantId: string) => {
     const breaks = getPriceBreaks(variantId);
-    const lastQty = breaks.length > 0 ? breaks[breaks.length - 1].quantity : 0;
-    setPriceBreaks(variantId, [...breaks, { quantity: lastQty + 10, price: 0 }]);
+    const lastTo = breaks.length > 0 ? breaks[breaks.length - 1].to : 0;
+    setPriceBreaks(variantId, [...breaks, { from: lastTo + 1, to: lastTo + 50, price: 0 }]);
   };
 
   const handleRemoveBreak = (variantId: string, idx: number) => {
@@ -144,7 +144,7 @@ export function Wholesale() {
     setPriceBreaks(variantId, breaks);
   };
 
-  const handleBreakChange = (variantId: string, idx: number, field: 'quantity' | 'price', value: number) => {
+  const handleBreakChange = (variantId: string, idx: number, field: 'from' | 'to' | 'price', value: number) => {
     const breaks = getPriceBreaks(variantId).map((b, i) => i === idx ? { ...b, [field]: value } : b);
     setPriceBreaks(variantId, breaks);
   };
@@ -307,13 +307,15 @@ export function Wholesale() {
                         <div className="px-4 pb-4 pr-16">
                           {breaks.map((b, idx) => (
                             <div key={idx} className="flex items-center gap-2 mb-2">
-                              <input type="number" placeholder="الكمية من" value={b.quantity} onChange={e => handleBreakChange(v.variantId, idx, 'quantity', Number(e.target.value))} className="w-24 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
-                              <span className="text-[10px] text-slate-400 font-bold">قطعة فأكثر</span>
-                              <input type="number" placeholder="السعر" value={b.price} onChange={e => handleBreakChange(v.variantId, idx, 'price', Number(e.target.value))} className="w-28 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
+                              <input type="number" placeholder="من" value={b.from} onChange={e => handleBreakChange(v.variantId, idx, 'from', Number(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
+                              <span className="text-[10px] text-slate-400 font-bold">لى</span>
+                              <input type="number" placeholder="لـ" value={b.to} onChange={e => handleBreakChange(v.variantId, idx, 'to', Number(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
+                              <span className="text-[10px] text-slate-400 font-bold">قطعة</span>
+                              <input type="number" placeholder="السعر" value={b.price} onChange={e => handleBreakChange(v.variantId, idx, 'price', Number(e.target.value))} className="w-24 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
                               <span className="text-[10px] text-slate-400 font-bold">ج.م/قطعة</span>
                               {b.price > 0 && v.totalCost > 0 && (
                                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${b.price > v.totalCost ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                  ربح {((b.price - v.totalCost) * b.quantity).toFixed(0)} ج.م
+                                  ربح {(b.price - v.totalCost).toFixed(0)} ج/قطعة
                                 </span>
                               )}
                               <button onClick={() => handleRemoveBreak(v.variantId, idx)} className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"><X size={14} /></button>
