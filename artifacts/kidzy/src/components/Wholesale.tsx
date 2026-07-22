@@ -1,18 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { WholesalePriceBreak, WholesaleProduct, WholesaleOrder, WholesaleOrderItem } from '../types';
-import { Search, Plus, X, Edit2, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { WholesaleOrder, WholesaleOrderItem } from '../types';
+import { Search, Plus, X, Edit2, Trash2, Save } from 'lucide-react';
 
-const WS_PRICING_KEY = 'kidzy_wholesale_pricing';
 const WS_ORDERS_KEY = 'kidzy_wholesale_orders';
-
-function loadPricing(): Record<string, WholesaleProduct> {
-  try { return JSON.parse(localStorage.getItem(WS_PRICING_KEY) || '{}'); } catch { return {}; }
-}
-
-function savePricing(data: Record<string, WholesaleProduct>) {
-  localStorage.setItem(WS_PRICING_KEY, JSON.stringify(data));
-}
 
 function loadOrders(): WholesaleOrder[] {
   try { return JSON.parse(localStorage.getItem(WS_ORDERS_KEY) || '[]'); } catch { return []; }
@@ -27,12 +18,7 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 export function Wholesale() {
   const { products } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'pricing' | 'orders' | 'accounts'>('pricing');
-
-  // ---- PRICING STATE ----
-  const [pricingData, setPricingData] = useState<Record<string, WholesaleProduct>>(loadPricing);
-  const [expandedVariant, setExpandedVariant] = useState<string | null>(null);
-  const [pricingSearch, setPricingSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'orders' | 'accounts'>('orders');
 
   // ---- ORDERS STATE ----
   const [ordersData, setOrdersData] = useState<WholesaleOrder[]>(loadOrders);
@@ -61,7 +47,6 @@ export function Wholesale() {
   const [accountsProductFilter, setAccountsProductFilter] = useState<string>('all');
 
   // ---- PERSIST ----
-  useEffect(() => { savePricing(pricingData); }, [pricingData]);
   useEffect(() => { saveOrders(ordersData); }, [ordersData]);
 
   // ---- COMPUTED ----
@@ -84,17 +69,6 @@ export function Wholesale() {
     return list;
   }, [products]);
 
-  const filteredVariants = useMemo(() => {
-    const q = pricingSearch.toLowerCase().trim();
-    if (!q) return allVariants;
-    return allVariants.filter(v =>
-      v.productName.toLowerCase().includes(q) ||
-      v.productCode.toLowerCase().includes(q) ||
-      v.color.toLowerCase().includes(q) ||
-      v.size.toLowerCase().includes(q)
-    );
-  }, [allVariants, pricingSearch]);
-
   const filteredOrders = useMemo(() => {
     const q = orderSearch.toLowerCase().trim();
     if (!q) return ordersData;
@@ -111,51 +85,6 @@ export function Wholesale() {
       o.items.some(it => it.variantId === accountsProductFilter)
     );
   }, [ordersData, accountsProductFilter]);
-
-  // ---- PRICING HANDLERS ----
-  const getPriceBreaks = (variantId: string): WholesalePriceBreak[] =>
-    pricingData[variantId]?.priceBreaks || [];
-
-  const setPriceBreaks = (variantId: string, breaks: WholesalePriceBreak[]) => {
-    setPricingData(prev => {
-      const existing = prev[variantId];
-      if (breaks.length === 0 && !existing) return prev;
-      const updated = { ...prev };
-      if (breaks.length === 0) {
-        delete updated[variantId];
-      } else {
-        updated[variantId] = {
-          ...(existing || { productId: '', variantId, productName: '', productCode: '', color: '', size: '', priceBreaks: [] }),
-          priceBreaks: breaks,
-        };
-      }
-      return updated;
-    });
-  };
-
-  const handleAddBreak = (variantId: string) => {
-    const breaks = getPriceBreaks(variantId);
-    const lastTo = breaks.length > 0 ? breaks[breaks.length - 1].to : 0;
-    setPriceBreaks(variantId, [...breaks, { from: lastTo + 1, to: lastTo + 50, price: 0 }]);
-  };
-
-  const handleRemoveBreak = (variantId: string, idx: number) => {
-    const breaks = getPriceBreaks(variantId).filter((_, i) => i !== idx);
-    setPriceBreaks(variantId, breaks);
-  };
-
-  const handleBreakChange = (variantId: string, idx: number, field: 'from' | 'to' | 'price', value: number) => {
-    const breaks = getPriceBreaks(variantId).map((b, i) => i === idx ? { ...b, [field]: value } : b);
-    setPriceBreaks(variantId, breaks);
-  };
-
-  const handleUpdatePricingMeta = (variantId: string, vi: typeof allVariants[0]) => {
-    setPricingData(prev => {
-      const existing = prev[variantId];
-      if (!existing) return prev;
-      return { ...prev, [variantId]: { ...existing, productId: vi.productId, productName: vi.productName, productCode: vi.productCode, color: vi.color, size: vi.size } };
-    });
-  };
 
   // ---- ORDER HANDLERS ----
   const handleOpenNewOrder = () => {
@@ -250,90 +179,18 @@ export function Wholesale() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-slate-800">شغل الجملة 📦</h2>
-          <p className="text-xs text-slate-400 font-bold mt-1">تسعير و طلبات و حسابات الجملة</p>
+          <h2 className="text-xl font-black text-slate-800">طلبات و حسابات الجملة 📦</h2>
+          <p className="text-xs text-slate-400 font-bold mt-1">تسجيلطلبات العملاء و حسابات الجملة</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex flex-wrap bg-slate-100 p-1 rounded-3xl gap-1">
-        <button onClick={() => setActiveTab('pricing')} className={`flex-1 min-w-[120px] py-3 text-xs md:text-sm font-black rounded-2xl transition-all ${activeTab === 'pricing' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>💰 تسعير الجملة</button>
         <button onClick={() => setActiveTab('orders')} className={`flex-1 min-w-[120px] py-3 text-xs md:text-sm font-black rounded-2xl transition-all ${activeTab === 'orders' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>📋 طلبات الجملة</button>
         <button onClick={() => setActiveTab('accounts')} className={`flex-1 min-w-[120px] py-3 text-xs md:text-sm font-black rounded-2xl transition-all ${activeTab === 'accounts' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>📊 حسابات الجملة</button>
       </div>
 
-      {/* ==================== TAB 1: PRICING ==================== */}
-      {activeTab === 'pricing' && (
-        <div className="space-y-6">
-          <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
-            <div className="relative">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input type="text" placeholder="ابحث باسم المنتج، الكود، اللون، أو المقاس..." className="w-full bg-slate-50 border-none rounded-2xl py-3 pr-11 pl-4 text-sm font-bold focus:ring-2 focus:ring-indigo-100 transition-all text-right" value={pricingSearch} onChange={e => setPricingSearch(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-extrabold text-slate-800 text-sm">تسعير الجملة حسب الكمية</h3>
-              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl">{filteredVariants.length} منتج</span>
-            </div>
-            <div className="divide-y divide-slate-50">
-              {filteredVariants.length === 0 ? (
-                <div className="p-12 text-center text-xs font-bold text-slate-400">لا توجد منتجات مطابقة</div>
-              ) : (
-                filteredVariants.map(v => {
-                  const breaks = getPriceBreaks(v.variantId);
-                  const isExpanded = expandedVariant === v.variantId;
-                  return (
-                    <div key={v.variantId} className="transition-all">
-                      <div className="flex items-center justify-between p-4 hover:bg-slate-50/50 cursor-pointer" onClick={() => setExpandedVariant(isExpanded ? null : v.variantId)}>
-                        <div className="flex items-center gap-3 text-right">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${breaks.length > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'}`}>
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-slate-800">{v.productName}</p>
-                            <p className="text-[10px] text-slate-400 font-bold font-mono">{v.productCode} • {v.size || 'عادي'} / {v.color || 'عادي'}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400 font-bold">التكلفة: {v.totalCost} ج.م</span>
-                          {breaks.length > 0 && (
-                            <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg font-black">{breaks.length} شريحة</span>
-                          )}
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <div className="px-4 pb-4 pr-16">
-                          {breaks.map((b, idx) => (
-                            <div key={idx} className="flex items-center gap-2 mb-2">
-                              <input type="number" placeholder="من" value={b.from} onChange={e => handleBreakChange(v.variantId, idx, 'from', Number(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
-                              <span className="text-[10px] text-slate-400 font-bold">لى</span>
-                              <input type="number" placeholder="لـ" value={b.to} onChange={e => handleBreakChange(v.variantId, idx, 'to', Number(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-2 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
-                              <span className="text-[10px] text-slate-400 font-bold">قطعة</span>
-                              <input type="number" placeholder="السعر" value={b.price} onChange={e => handleBreakChange(v.variantId, idx, 'price', Number(e.target.value))} className="w-24 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-bold text-center outline-none focus:ring-2 focus:ring-indigo-100" />
-                              <span className="text-[10px] text-slate-400 font-bold">ج.م/قطعة</span>
-                              {b.price > 0 && v.totalCost > 0 && (
-                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${b.price > v.totalCost ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                  ربح {(b.price - v.totalCost).toFixed(0)} ج/قطعة
-                                </span>
-                              )}
-                              <button onClick={() => handleRemoveBreak(v.variantId, idx)} className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"><X size={14} /></button>
-                            </div>
-                          ))}
-                          <button onClick={() => handleAddBreak(v.variantId)} className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all cursor-pointer">+ إضافة شريحة سعر</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ==================== TAB 2: ORDERS ==================== */}
+      {/* ==================== TAB 1: ORDERS ==================== */}
       {activeTab === 'orders' && (
         <div className="space-y-6">
           {/* Table + Search */}

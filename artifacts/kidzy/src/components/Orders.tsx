@@ -10,9 +10,10 @@ import {
   Plus, Search, Calendar, Sparkles, AlertCircle, FileText, 
   MapPin, Phone, User, Eye, Trash2, Edit2, Upload, 
   RefreshCw,
-  Clock
+  Clock, Package
 } from 'lucide-react';
 import { STATUS_DETAILS, GOVERNORATES, ORDER_SOURCES } from '../lib/constants';
+import { Wholesale } from './Wholesale';
 
 const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -21,7 +22,7 @@ export const Orders: React.FC = () => {
 
   // Dialog & View management
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "returns">("all");
+  const [activeTab, setActiveTab] = useState<"retail" | "returns" | "wholesale">("retail");
   const [modalType, setModalType] = useState<"manual" | "smart">("manual");
   const [sendConfirm, setSendConfirm] = useState(true);
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -728,16 +729,16 @@ export const Orders: React.FC = () => {
           <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1">
             <button
               onClick={() => {
-                setActiveTab("all");
+                setActiveTab("retail");
                 setStatusFilter("all");
               }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "all"
+                activeTab === "retail"
                   ? "bg-white text-slate-800 shadow-xs border border-slate-200/50"
                   : "text-slate-500 hover:text-slate-800 bg-transparent border-transparent"
               }`}
             >
-              <span>جميع الأوردرات 📦</span>
+              <span>اوردرات القطاعي 📦</span>
             </button>
             <button
               onClick={() => {
@@ -750,7 +751,7 @@ export const Orders: React.FC = () => {
                   : "text-slate-500 hover:text-slate-800 bg-transparent border-transparent"
               }`}
             >
-              <span>إدارة المرتجعات 🔄</span>
+              <span>ادارة المرتجعات 🔄</span>
               <span className="bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0">
                 {(() => {
                   let count = 0;
@@ -762,9 +763,22 @@ export const Orders: React.FC = () => {
                 })()}
               </span>
             </button>
+            <button
+              onClick={() => {
+                setActiveTab("wholesale");
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "wholesale"
+                  ? "bg-white text-slate-800 shadow-xs border border-slate-200/50"
+                  : "text-slate-500 hover:text-slate-800 bg-transparent border-transparent"
+              }`}
+            >
+              <span>اوردرات الجملة 💎</span>
+            </button>
           </div>
 
-          {/* Action buttons */}
+          {/* Action buttons - only for retail/returns */}
+          {activeTab !== "wholesale" && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -790,10 +804,11 @@ export const Orders: React.FC = () => {
               <span>إضافة طلب ➕</span>
             </button>
           </div>
+          )}
         </div>
       </div>
 
-      {activeTab === "all" ? (
+      {activeTab === "retail" ? (
         <>
           {/* Advanced Filtering controls */}
           <div className="bg-white p-6 sm:p-8 rounded-[2.2rem] border border-slate-100/80 shadow-premium hover:shadow-premium-hover transition-all duration-300 space-y-5">
@@ -1108,6 +1123,8 @@ export const Orders: React.FC = () => {
             </div>
           </div>
         </>
+      ) : activeTab === "wholesale" ? (
+        <Wholesale />
       ) : (
         <>
           {/* Returns Dashboard + Stats */}
