@@ -790,7 +790,6 @@ export const Orders: React.FC = () => {
               <span>إضافة طلب ➕</span>
             </button>
           </div>
-          )}
         </div>
       </div>
 
