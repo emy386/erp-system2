@@ -23,7 +23,8 @@ const PERMISSIONS_LIST = [
   { id: "inventory", label: "المنتجات" },
   { id: "production", label: "الإنتاج والورش" },
   { id: "staff", label: "الموظفين" },
-  { id: "accounts", label: "الحسابات" }
+  { id: "accounts", label: "الحسابات" },
+  { id: "wholesale", label: "شغل الجملة" }
 ];
 
 const ARABIC_MONTHS = [
