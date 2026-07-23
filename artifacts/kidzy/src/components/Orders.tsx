@@ -280,7 +280,8 @@ export const Orders: React.FC = () => {
     const address = labelVal('العنوان');
     const discount = parseInt(labelVal('خصم').replace(/[ج\.]/g, '')) || 0;
     const shippingText = labelVal('الشحن');
-    const hasWord = (txt: string, word: string) => new RegExp(`(?:^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(txt);
+    const SPECIAL_CHARS = /[.*+?^${}()|[\]\\]/g;
+const hasWord = (txt: string, word: string) => new RegExp('(?:^|\\s)' + word.replace(SPECIAL_CHARS, '\\$&') + '(?=\\s|$)', 'i').test(txt);
     const shippingPaid = hasWord(shippingText, 'مدفوع') || hasWord(shippingText, 'تم الدفع') || hasWord(shippingText, 'تم دفع') || hasWord(cleanText, 'مدفوع') || hasWord(cleanText, 'تم الدفع') || hasWord(cleanText, 'تم دفع');
     const shippingAmount = shippingPaid ? 0 : (parseInt(shippingText.replace(/[ج\.]/g, '')) || 0);
     const collectionTotal = parseInt(labelVal('التحصيل المطلوب').replace(/[ج\.]/g, '')) || 0;
