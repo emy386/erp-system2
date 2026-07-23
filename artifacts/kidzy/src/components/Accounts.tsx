@@ -94,8 +94,9 @@ export function Accounts() {
     const currentYear = now.getFullYear();
 
     const isInMonth = (dateStr: string) => {
+      if (!dateStr) return false;
       const d = new Date(dateStr);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     };
 
     // 1. Money Out (General Expenses + Manufacturing Costs)
@@ -128,9 +129,11 @@ export function Accounts() {
 
     // Filtered Expenses for the list
     const filteredExpenses = (generalExpenses || []).filter(exp => {
-      const matchesSearch = exp.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           exp.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = categoryFilter === 'all' || exp.category === categoryFilter;
+      const desc = exp.description || '';
+      const cat = exp.category || '';
+      const matchesSearch = desc.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           cat.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || cat === categoryFilter;
       return matchesSearch && matchesCategory;
     });
 
@@ -187,8 +190,8 @@ export function Accounts() {
       // 3. Search query
       if (workshopSearchQuery) {
         const query = workshopSearchQuery.toLowerCase();
-        const matchesName = order.customerName.toLowerCase().includes(query) || (order.childName || '').toLowerCase().includes(query);
-        const matchesId = order.id.toLowerCase().includes(query);
+        const matchesName = (order.customerName || '').toLowerCase().includes(query) || (order.childName || '').toLowerCase().includes(query);
+        const matchesId = (order.id || '').toLowerCase().includes(query);
         if (!matchesName && !matchesId) return false;
       }
 
