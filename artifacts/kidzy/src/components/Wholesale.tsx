@@ -180,7 +180,7 @@ export function Wholesale() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-800">طلبات و حسابات الجملة 📦</h2>
-          <p className="text-xs text-slate-400 font-bold mt-1">تسجيلطلبات العملاء و حسابات الجملة</p>
+          <p className="text-xs text-slate-400 font-bold mt-1">تسجيل طلبات العملاء و حسابات الجملة</p>
         </div>
       </div>
 
