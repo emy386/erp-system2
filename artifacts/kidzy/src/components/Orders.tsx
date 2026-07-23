@@ -13,7 +13,7 @@ import {
   Clock, Package
 } from 'lucide-react';
 import { STATUS_DETAILS, GOVERNORATES, ORDER_SOURCES } from '../lib/constants';
-import { Wholesale } from './Wholesale';
+
 
 const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -22,7 +22,7 @@ export const Orders: React.FC = () => {
 
   // Dialog & View management
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"retail" | "returns" | "wholesale">("retail");
+  const [activeTab, setActiveTab] = useState<"retail" | "returns">("retail");
   const [modalType, setModalType] = useState<"manual" | "smart">("manual");
   const [sendConfirm, setSendConfirm] = useState(true);
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -763,22 +763,9 @@ export const Orders: React.FC = () => {
                 })()}
               </span>
             </button>
-            <button
-              onClick={() => {
-                setActiveTab("wholesale");
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "wholesale"
-                  ? "bg-white text-slate-800 shadow-xs border border-slate-200/50"
-                  : "text-slate-500 hover:text-slate-800 bg-transparent border-transparent"
-              }`}
-            >
-              <span>اوردرات الجملة 💎</span>
-            </button>
           </div>
 
           {/* Action buttons - only for retail/returns */}
-          {activeTab !== "wholesale" && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -1123,8 +1110,6 @@ export const Orders: React.FC = () => {
             </div>
           </div>
         </>
-      ) : activeTab === "wholesale" ? (
-        <Wholesale />
       ) : (
         <>
           {/* Returns Dashboard + Stats */}
