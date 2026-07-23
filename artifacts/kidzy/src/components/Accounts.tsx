@@ -114,7 +114,7 @@ export function Accounts() {
 
     const getOrderRevenue = (o: Order) => {
       if (o.status === 'cancelled' || o.status === 'returned') return 0;
-      const activeItemsTotal = o.items
+      const activeItemsTotal = (o.items || [])
         .filter(i => !i.isReturned && i.productionStatus !== 'cancelled')
         .reduce((sum, i) => sum + (i.price * i.quantity), 0);
       return activeItemsTotal + (o.shippingPaid ? 0 : (o.shippingAmount || 0)) - (Number(o.discount) || 0);

@@ -208,7 +208,7 @@ export function Wholesale() {
           <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h3 className="font-extrabold text-slate-800 text-sm">طلبات الجملة</h3>
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl">{ordersData.length} طلب</span>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl">{filteredOrders.length} طلب</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">

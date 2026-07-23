@@ -1748,7 +1748,7 @@ export function Production() {
                 <h3 className="text-md font-black text-slate-800">الأرصدة وبطاقات كشف حساب العمال والورش</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {enrichedWorkers.map(worker => {
+                {displayedWorkers.map(worker => {
                   const status = getPaymentStatus(worker);
                   return (
                     <div key={worker.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 hover:border-blue-100 transition-all text-right">
