@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm --filter ./artifacts/kidzy run build",
   "outputDirectory": "artifacts/kidzy/dist",
   "framework": "vite",
