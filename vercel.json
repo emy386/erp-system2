@@ -4,6 +4,6 @@
   "outputDirectory": "artifacts/kidzy/dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/((?!assets/|favicon\\.ico|icon\\.svg|manifest\\.webmanifest|sw\\.js|workbox-.*).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|api/|favicon\\.ico|icon\\.svg|manifest\\.webmanifest|sw\\.js|workbox-.*).*)", "destination": "/index.html" }
   ]
 }
