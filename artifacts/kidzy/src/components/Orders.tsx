@@ -765,6 +765,7 @@ export const Orders: React.FC = () => {
             </button>
           </div>
 
+          {/* Action buttons - only for retail/returns */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -2334,8 +2335,9 @@ export const Orders: React.FC = () => {
             </form>
           </div>
           )}
-          </div>
         </div>
+      )}
+    </div>
   );
 };
 
