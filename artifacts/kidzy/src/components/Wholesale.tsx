@@ -154,10 +154,16 @@ export function Wholesale() {
     const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
     const totalDeposits = orders.reduce((s, o) => s + o.deposit, 0);
     const totalRemaining = orders.reduce((s, o) => s + Math.max(0, o.total - o.deposit), 0);
+    const totalCost = orders.reduce((s, o) => s + o.items.reduce((isum, it) => {
+      const variant = allVariants.find(v => v.variantId === it.variantId);
+      const costPerUnit = variant?.totalCost || 0;
+      return isum + costPerUnit * it.quantity;
+    }, 0), 0);
+    const totalProfit = totalRevenue - totalCost;
     const paidInFullCount = orders.filter(o => o.paidInFull).length;
     const pendingCount = orders.filter(o => !o.paidInFull).length;
-    return { totalRevenue, totalDeposits, totalRemaining, paidInFullCount, pendingCount, totalOrders: orders.length };
-  }, [accountsFilteredOrders]);
+    return { totalRevenue, totalDeposits, totalRemaining, totalCost, totalProfit, paidInFullCount, pendingCount, totalOrders: orders.length };
+  }, [accountsFilteredOrders, allVariants]);
 
   const productOptionsForFilter = useMemo(() => {
     const seen = new Set<string>();
@@ -273,7 +279,7 @@ export function Wholesale() {
       {activeTab === 'accounts' && (
         <div className="space-y-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-2">
               <p className="text-slate-500 font-extrabold text-[10px]">إجمالي الطلبات</p>
               <p className="text-2xl font-black text-slate-800">{accountsStats.totalOrders}</p>
@@ -290,9 +296,13 @@ export function Wholesale() {
               <p className="text-amber-600 font-extrabold text-[10px]">المتبقي</p>
               <p className="text-2xl font-black text-amber-700">{accountsStats.totalRemaining.toFixed(0)} ج</p>
             </div>
-            <div className={`${accountsStats.pendingCount > 0 ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'} p-5 rounded-[2rem] border shadow-sm text-center space-y-2`}>
-              <p className={`font-extrabold text-[10px] ${accountsStats.pendingCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>مدفوع بالكامل</p>
-              <p className={`text-2xl font-black ${accountsStats.pendingCount > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{accountsStats.paidInFullCount}/{accountsStats.totalOrders}</p>
+            <div className="bg-purple-50/50 p-5 rounded-[2rem] border border-purple-100/50 shadow-sm text-center space-y-2">
+              <p className="text-purple-600 font-extrabold text-[10px]">التكلفة الإجمالية</p>
+              <p className="text-2xl font-black text-purple-700">{accountsStats.totalCost.toFixed(0)} ج</p>
+            </div>
+            <div className={`${accountsStats.totalProfit >= 0 ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-rose-50/50 border-rose-100/50'} p-5 rounded-[2rem] border shadow-sm text-center space-y-2`}>
+              <p className={`font-extrabold text-[10px] ${accountsStats.totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>الربح الصافي</p>
+              <p className={`text-2xl font-black ${accountsStats.totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{accountsStats.totalProfit.toFixed(0)} ج</p>
             </div>
           </div>
 
@@ -317,6 +327,8 @@ export function Wholesale() {
                     <th className="p-4">العميل</th>
                     <th className="p-4">المنتجات</th>
                     <th className="p-4">الإجمالي</th>
+                    <th className="p-4">التكلفة</th>
+                    <th className="p-4">الربح</th>
                     <th className="p-4">المدفوع</th>
                     <th className="p-4">المتبقي</th>
                     <th className="p-4">الحالة</th>
@@ -324,10 +336,15 @@ export function Wholesale() {
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-slate-700 font-bold">
                   {accountsFilteredOrders.length === 0 ? (
-                    <tr><td colSpan={6} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات</td></tr>
+                    <tr><td colSpan={8} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات</td></tr>
                   ) : (
                     accountsFilteredOrders.map(o => {
                       const remaining = Math.max(0, o.total - o.deposit);
+                      const orderCost = o.items.reduce((isum, it) => {
+                        const variant = allVariants.find(v => v.variantId === it.variantId);
+                        return isum + (variant?.totalCost || 0) * it.quantity;
+                      }, 0);
+                      const orderProfit = o.total - orderCost;
                       return (
                         <tr key={o.id} className="hover:bg-slate-50/50 transition-all">
                           <td className="p-4">
@@ -339,6 +356,10 @@ export function Wholesale() {
                             ))}
                           </td>
                           <td className="p-4 font-black">{o.total.toFixed(0)} ج</td>
+                          <td className="p-4 font-black text-purple-600">{orderCost.toFixed(0)} ج</td>
+                          <td className="p-4">
+                            <span className={`font-black ${orderProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{orderProfit.toFixed(0)} ج</span>
+                          </td>
                           <td className="p-4 font-black text-blue-600">{o.deposit.toFixed(0)} ج</td>
                           <td className="p-4">
                             <span className={`font-black ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{remaining.toFixed(0)} ج</span>
