@@ -122,6 +122,17 @@ export function Wholesale() {
     }
   };
 
+  const handleQuickStatusChange = (id: string, newStatus: WholesaleOrder['status']) => {
+    setOrdersData(prev => prev.map(o => {
+      if (o.id !== id) return o;
+      const updated = { ...o, status: newStatus, lastUpdateDate: new Date().toISOString() };
+      if (newStatus === 'الغاء') {
+        updated.depositReturned = false;
+      }
+      return updated;
+    }));
+  };
+
   const handleAddOrderItem = () => {
     setOrderForm(prev => ({
       ...prev,
@@ -237,14 +248,15 @@ export function Wholesale() {
                     <th className="p-4">الإجمالي</th>
                     <th className="p-4">المدفوع</th>
                     <th className="p-4">المتبقي</th>
-                    <th className="p-4">الحالة</th>
+                    <th className="p-4">تاريخ التسجيل</th>
                     <th className="p-4">تاريخ التسليم</th>
+                    <th className="p-4">الحالة</th>
                     <th className="p-4 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-slate-700 font-bold">
                   {filteredOrders.length === 0 ? (
-                    <tr><td colSpan={8} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات جملة</td></tr>
+                    <tr><td colSpan={9} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات جملة</td></tr>
                   ) : (
                     filteredOrders.map(o => {
                       const remaining = Math.max(0, o.total - o.deposit);
@@ -270,13 +282,31 @@ export function Wholesale() {
                           <td className="p-4">
                             <span className={`font-black ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{remaining.toFixed(0)} ج</span>
                           </td>
+                          <td className="p-4 text-slate-500 text-[10px]">{o.creationDate ? new Date(o.creationDate).toLocaleDateString('en-GB') : '—'}</td>
+                          <td className="p-4 text-slate-500">{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-4">
-                            <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${o.status === 'تم التسليم' ? 'bg-emerald-50 text-emerald-700' : o.status === 'الغاء' ? 'bg-rose-50 text-rose-700' : 'bg-blue-50 text-blue-700'}`}>{o.status || 'قيد التصنيع'}</span>
+                            <select
+                              value={o.status || 'قيد التصنيع'}
+                              onChange={e => handleQuickStatusChange(o.id, e.target.value as WholesaleOrder['status'])}
+                              className={`text-[10px] font-black px-2 py-1.5 rounded-xl border cursor-pointer outline-none text-right ${
+                                o.status === 'تم التسليم' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : o.status === 'الغاء' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}
+                            >
+                              <option value="قيد التصنيع">قيد التصنيع</option>
+                              <option value="تم التسليم">تم التسليم</option>
+                              <option value="الغاء">إلغاء</option>
+                            </select>
                             {o.status === 'الغاء' && (
-                              <span className={`text-[9px] font-bold block mt-1 ${o.depositReturned ? 'text-amber-600' : 'text-emerald-600'}`}>{o.depositReturned ? 'الديبوزيت اترجع ✅' : 'الديبوزيت لم يُرجع'}</span>
+                              <div className="mt-1.5">
+                                <button
+                                  onClick={() => setOrdersData(prev => prev.map(oo => oo.id === o.id ? { ...oo, depositReturned: !oo.depositReturned, lastUpdateDate: new Date().toISOString() } : oo))}
+                                  className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border cursor-pointer transition-all ${o.depositReturned ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                                >
+                                  {o.depositReturned ? '✅ الديبوزيت اترجع' : 'الديبوزيت لم يُرجع'}
+                                </button>
+                              </div>
                             )}
                           </td>
-                          <td className="p-4 text-slate-500">{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button onClick={() => handleOpenEditOrder(o)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"><Edit2 size={14} /></button>
