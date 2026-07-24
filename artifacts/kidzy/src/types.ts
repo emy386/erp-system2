@@ -262,4 +262,6 @@ export interface WholesaleOrder {
   notes: string;
   creationDate: string;
   lastUpdateDate: string;
+  status: 'قيد التصنيع' | 'تم التسليم' | 'الغاء';
+  depositReturned: boolean;
 }

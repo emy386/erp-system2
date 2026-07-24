@@ -40,6 +40,8 @@ export function Wholesale() {
     notes: '',
     creationDate: new Date().toISOString(),
     lastUpdateDate: new Date().toISOString(),
+    status: 'قيد التصنيع',
+    depositReturned: false,
   });
   const [orderForm, setOrderForm] = useState<WholesaleOrder>(emptyOrderForm());
 
@@ -95,7 +97,7 @@ export function Wholesale() {
 
   const handleOpenEditOrder = (o: WholesaleOrder) => {
     setEditingOrderId(o.id);
-    setOrderForm({ ...o });
+    setOrderForm({ ...o, status: o.status || 'قيد التصنيع', depositReturned: o.depositReturned || false });
     setShowOrderForm(true);
   };
 
@@ -151,18 +153,28 @@ export function Wholesale() {
   // ---- ACCOUNTS ----
   const accountsStats = useMemo(() => {
     const orders = accountsFilteredOrders;
-    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
-    const totalDeposits = orders.reduce((s, o) => s + o.deposit, 0);
-    const totalRemaining = orders.reduce((s, o) => s + Math.max(0, o.total - o.deposit), 0);
-    const totalCost = orders.reduce((s, o) => s + o.items.reduce((isum, it) => {
+    const activeOrders = orders.filter(o => o.status !== 'الغاء');
+    const cancelledOrders = orders.filter(o => o.status === 'الغاء');
+
+    const totalRevenue = activeOrders.reduce((s, o) => s + o.total, 0);
+    const totalDeposits = activeOrders.reduce((s, o) => s + o.deposit, 0);
+    const totalRemaining = activeOrders.reduce((s, o) => s + Math.max(0, o.total - o.deposit), 0);
+
+    const activeCost = activeOrders.reduce((s, o) => s + o.items.reduce((isum, it) => {
       const variant = allVariants.find(v => v.variantId === it.variantId);
       const costPerUnit = variant?.totalCost || 0;
       return isum + costPerUnit * it.quantity;
     }, 0), 0);
-    const totalProfit = totalRevenue - totalCost;
-    const paidInFullCount = orders.filter(o => o.paidInFull).length;
-    const pendingCount = orders.filter(o => !o.paidInFull).length;
-    return { totalRevenue, totalDeposits, totalRemaining, totalCost, totalProfit, paidInFullCount, pendingCount, totalOrders: orders.length };
+
+    const cancelledKeptDeposits = cancelledOrders.filter(o => !o.depositReturned).reduce((s, o) => s + o.deposit, 0);
+
+    const totalCost = activeCost;
+    const totalProfit = totalRevenue - totalCost + cancelledKeptDeposits;
+    const paidInFullCount = activeOrders.filter(o => o.paidInFull).length;
+    const pendingCount = activeOrders.filter(o => !o.paidInFull).length;
+    const cancelledCount = cancelledOrders.length;
+    const cancelledReturnedCount = cancelledOrders.filter(o => o.depositReturned).length;
+    return { totalRevenue, totalDeposits, totalRemaining, totalCost, totalProfit, paidInFullCount, pendingCount, cancelledCount, cancelledReturnedCount, totalOrders: activeOrders.length, totalAllOrders: orders.length };
   }, [accountsFilteredOrders, allVariants]);
 
   const productOptionsForFilter = useMemo(() => {
@@ -225,13 +237,14 @@ export function Wholesale() {
                     <th className="p-4">الإجمالي</th>
                     <th className="p-4">المدفوع</th>
                     <th className="p-4">المتبقي</th>
+                    <th className="p-4">الحالة</th>
                     <th className="p-4">تاريخ التسليم</th>
                     <th className="p-4 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-slate-700 font-bold">
                   {filteredOrders.length === 0 ? (
-                    <tr><td colSpan={7} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات جملة</td></tr>
+                    <tr><td colSpan={8} className="p-12 text-center text-xs font-bold text-slate-400">لا توجد طلبات جملة</td></tr>
                   ) : (
                     filteredOrders.map(o => {
                       const remaining = Math.max(0, o.total - o.deposit);
@@ -257,6 +270,12 @@ export function Wholesale() {
                           <td className="p-4">
                             <span className={`font-black ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{remaining.toFixed(0)} ج</span>
                           </td>
+                          <td className="p-4">
+                            <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${o.status === 'تم التسليم' ? 'bg-emerald-50 text-emerald-700' : o.status === 'الغاء' ? 'bg-rose-50 text-rose-700' : 'bg-blue-50 text-blue-700'}`}>{o.status || 'قيد التصنيع'}</span>
+                            {o.status === 'الغاء' && (
+                              <span className={`text-[9px] font-bold block mt-1 ${o.depositReturned ? 'text-amber-600' : 'text-emerald-600'}`}>{o.depositReturned ? 'الديبوزيت اترجع ✅' : 'الديبوزيت لم يُرجع'}</span>
+                            )}
+                          </td>
                           <td className="p-4 text-slate-500">{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-4 text-center">
                             <div className="flex items-center justify-center gap-1">
@@ -281,8 +300,11 @@ export function Wholesale() {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-2">
-              <p className="text-slate-500 font-extrabold text-[10px]">إجمالي الطلبات</p>
+              <p className="text-slate-500 font-extrabold text-[10px]">إجمالي الطلبات النشطة</p>
               <p className="text-2xl font-black text-slate-800">{accountsStats.totalOrders}</p>
+              {accountsStats.cancelledCount > 0 && (
+                <p className="text-[10px] font-bold text-rose-500">{accountsStats.cancelledCount} ملغي ({accountsStats.cancelledReturnedCount} اترجع الديبوزيت)</p>
+              )}
             </div>
             <div className="bg-emerald-50/50 p-5 rounded-[2rem] border border-emerald-100/50 shadow-sm text-center space-y-2">
               <p className="text-emerald-600 font-extrabold text-[10px]">إجمالي الإيرادات</p>
@@ -344,21 +366,26 @@ export function Wholesale() {
                         const variant = allVariants.find(v => v.variantId === it.variantId);
                         return isum + (variant?.totalCost || 0) * it.quantity;
                       }, 0);
-                      const orderProfit = o.total - orderCost;
+                      const isCancelled = o.status === 'الغاء';
+                      const effectiveRevenue = isCancelled ? 0 : o.total;
+                      const cancelledKeptDeposit = isCancelled && !o.depositReturned ? o.deposit : 0;
+                      const orderProfit = effectiveRevenue - (isCancelled ? 0 : orderCost) + cancelledKeptDeposit;
                       return (
-                        <tr key={o.id} className="hover:bg-slate-50/50 transition-all">
+                        <tr key={o.id} className={`hover:bg-slate-50/50 transition-all ${isCancelled ? 'opacity-60' : ''}`}>
                           <td className="p-4">
                             <span className="font-extrabold text-slate-800">{o.customerName}</span>
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg block w-fit mt-1 ${isCancelled ? 'bg-rose-50 text-rose-700' : o.status === 'تم التسليم' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>{o.status || 'قيد التصنيع'}</span>
                           </td>
                           <td className="p-4">
                             {o.items.map((it, idx) => (
                               <div key={idx} className="text-[10px] text-slate-600">{it.productName} x{it.quantity} @ {it.wholesalePrice}ج</div>
                             ))}
                           </td>
-                          <td className="p-4 font-black">{o.total.toFixed(0)} ج</td>
-                          <td className="p-4 font-black text-purple-600">{orderCost.toFixed(0)} ج</td>
+                          <td className="p-4 font-black">{effectiveRevenue.toFixed(0)} ج</td>
+                          <td className="p-4 font-black text-purple-600">{(isCancelled ? 0 : orderCost).toFixed(0)} ج</td>
                           <td className="p-4">
                             <span className={`font-black ${orderProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{orderProfit.toFixed(0)} ج</span>
+                            {cancelledKeptDeposit > 0 && <span className="text-[9px] font-bold text-amber-600 block">ديبوزيت محتفظ بيه</span>}
                           </td>
                           <td className="p-4 font-black text-blue-600">{o.deposit.toFixed(0)} ج</td>
                           <td className="p-4">
@@ -366,7 +393,7 @@ export function Wholesale() {
                           </td>
                           <td className="p-4">
                             {o.paidInFull ? (
-                              <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">مدفوع بالكامل ✅</span>
+                              <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">مدفوع بالكامل</span>
                             ) : (
                               <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-amber-50 text-amber-700">متبقي {remaining.toFixed(0)} ج</span>
                             )}
@@ -462,10 +489,33 @@ export function Wholesale() {
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={orderForm.paidInFull} onChange={e => setOrderForm(prev => ({ ...prev, paidInFull: e.target.checked, paidInFullDate: e.target.checked ? new Date().toISOString() : '' }))} className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                    <input type="checkbox" checked={orderForm.paidInFull} onChange={e => {
+                      const checked = e.target.checked;
+                      const total = orderForm.items.reduce((s, it) => s + it.wholesalePrice * it.quantity, 0);
+                      setOrderForm(prev => ({ ...prev, paidInFull: checked, paidInFullDate: checked ? new Date().toISOString() : '', deposit: checked ? total : prev.deposit }));
+                    }} className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
                     <span className="text-xs font-black text-slate-700">تم الدفع بالكامل</span>
                   </label>
                 </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 font-black block mb-1">حالة الطلب</label>
+                  <select value={orderForm.status} onChange={e => setOrderForm(prev => ({ ...prev, status: e.target.value as WholesaleOrder['status'] }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer text-right">
+                    <option value="قيد التصنيع">قيد التصنيع 🔨</option>
+                    <option value="تم التسليم">تم التسليم ✅</option>
+                    <option value="الغاء">إلغاء ❌</option>
+                  </select>
+                </div>
+                {orderForm.status === 'الغاء' && (
+                  <div className="md:col-span-2 bg-rose-50/50 border border-rose-100 rounded-2xl p-4">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={orderForm.depositReturned} onChange={e => setOrderForm(prev => ({ ...prev, depositReturned: e.target.checked }))} className="w-4 h-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer" />
+                      <div>
+                        <span className="text-xs font-black text-rose-700">تم إرجاع الديبوزيت للعميل</span>
+                        <span className="text-[10px] font-bold text-rose-400 block">لو العميل رجّع الفلوس كاملة اعمل صح، لو اتفاوضتوا ومسكتوا الفلوس اسيبه فاضي</span>
+                      </div>
+                    </label>
+                  </div>
+                )}
                 <div className="md:col-span-2">
                   <label className="text-[10px] text-slate-400 font-black block mb-1">ملاحظات</label>
                   <textarea value={orderForm.notes} onChange={e => setOrderForm(prev => ({ ...prev, notes: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 text-right resize-none" rows={2} placeholder="ملاحظات..." />
