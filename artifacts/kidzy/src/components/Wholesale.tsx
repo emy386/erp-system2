@@ -243,12 +243,12 @@ export function Wholesale() {
               <table className="w-full text-right text-xs">
                 <thead>
                   <tr className="bg-slate-100/50 text-slate-500 font-extrabold border-b border-slate-100">
+                    <th className="p-4">تاريخ التسجيل</th>
                     <th className="p-4">العميل</th>
                     <th className="p-4">المنتجات</th>
                     <th className="p-4">الإجمالي</th>
                     <th className="p-4">المدفوع</th>
                     <th className="p-4">المتبقي</th>
-                    <th className="p-4">تاريخ التسجيل</th>
                     <th className="p-4">تاريخ التسليم</th>
                     <th className="p-4">الحالة</th>
                     <th className="p-4 text-center">إجراءات</th>
@@ -262,6 +262,7 @@ export function Wholesale() {
                       const remaining = Math.max(0, o.total - o.deposit);
                       return (
                         <tr key={o.id} className="hover:bg-slate-50/50 transition-all">
+                          <td className="p-4 text-slate-500 text-[10px]">{o.creationDate ? new Date(o.creationDate).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-4">
                             <div className="flex flex-col">
                               <span className="font-extrabold text-slate-800">{o.customerName}</span>
@@ -282,7 +283,6 @@ export function Wholesale() {
                           <td className="p-4">
                             <span className={`font-black ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{remaining.toFixed(0)} ج</span>
                           </td>
-                          <td className="p-4 text-slate-500 text-[10px]">{o.creationDate ? new Date(o.creationDate).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-4 text-slate-500">{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-4">
                             <select
